@@ -1,0 +1,28 @@
+# 1. Install PHP 8.2 and specifically the GD extension
+[phases.setup]
+nixPkgs = [
+    "php82",
+    "php82Extensions.gd",
+    "php82Extensions.pdo",
+    "php82Extensions.pdo_mysql",
+    "php82Extensions.mbstring",
+    "php82Extensions.curl",
+    "php82Extensions.bcmath",
+    "php82Extensions.tokenizer",
+    "php82Extensions.xml",
+    "composer",
+    "nodejs_20"
+]
+
+# 2. Build Commands (Frontend + Backend)
+# We add --ignore-platform-reqs to satisfy any strict checks
+[phases.build]
+cmds = [
+    "npm install", 
+    "npm run build", 
+    "composer install --optimize-autoloader --no-dev --ignore-platform-reqs"
+]
+
+# 3. Start Command
+[start]
+cmd = "php artisan migrate --force && php artisan storage:link && php artisan serve --host=0.0.0.0 --port=$PORT"
