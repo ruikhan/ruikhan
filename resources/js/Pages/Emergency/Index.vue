@@ -29,10 +29,10 @@ const triggerSOS = () => {
 
     <AuthenticatedLayout>
         
-        <div class="min-h-screen bg-slate-900 relative overflow-hidden font-sans pb-20">
-            <div class="absolute inset-0 bg-red-900/10 animate-pulse-slow pointer-events-none"></div>
+        <div class=" font-sans pb-20">
+            <!-- <div class="absolute inset-0 bg-red-900/10 animate-pulse-slow pointer-events-none"></div>
             <div class="absolute top-[-20%] right-[-20%] w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[150px] animate-pulse-slow"></div>
-            <div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(45deg, #ef4444 0, #ef4444 1px, transparent 0, transparent 50%); background-size: 20px 20px;"></div>
+            <div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(45deg, #ef4444 0, #ef4444 1px, transparent 0, transparent 50%); background-size: 20px 20px;"></div> -->
 
             <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
 
