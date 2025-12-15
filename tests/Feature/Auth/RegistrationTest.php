@@ -28,15 +28,14 @@ class RegistrationTest extends TestCase
         ]);
 
         // 2. Send the registration request
-        $response = $this->post('/register', [
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'phone_number' => '09123456789',
-            // FIX: Send the ID, but cast it to a string to satisfy 'string' validation
-            'role' => (string) $roleId, 
-            'password' => 'password',
-            'password_confirmation' => 'password',
-        ]);
+// In tests/Feature/Auth/RegistrationTest.php, test_new_users_can_register
+$response = $this->post('/register', [
+    'name' => 'Test User',
+    'email' => 'test@example.com',
+    'phone_number' => '09123456789',
+    'password' => 'password',
+    'password_confirmation' => 'password',
+]);
 
         $this->assertAuthenticated();
         $response->assertRedirect(RouteServiceProvider::HOME);
