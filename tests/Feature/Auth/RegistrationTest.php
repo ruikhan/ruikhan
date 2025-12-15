@@ -19,23 +19,24 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register()
     {
-        // 1. Create the role and get the ID
-        $roleId = DB::table('roles')->insertGetId([
-            'name' => 'citizen',
+        // 1. Create the 'resident' role in the database
+        // We use 'resident' because your Controller specifically requires it
+        DB::table('roles')->insertOrIgnore([
+            'name' => 'resident', 
             'guard_name' => 'web',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         // 2. Send the registration request
-// In tests/Feature/Auth/RegistrationTest.php, test_new_users_can_register
-$response = $this->post('/register', [
-    'name' => 'Test User',
-    'email' => 'test@example.com',
-    'phone_number' => '09123456789',
-    'password' => 'password',
-    'password_confirmation' => 'password',
-]);
+        $response = $this->post('/register', [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone_number' => '09123456789',
+            'role' => 'resident', // FIX: Added back, and matches the 'in:resident...' rule
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
 
         $this->assertAuthenticated();
         $response->assertRedirect(RouteServiceProvider::HOME);
