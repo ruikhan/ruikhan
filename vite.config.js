@@ -4,9 +4,13 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
     server: {
-        host: '0.0.0.0', // Listen to everyone on the network
+        host: '0.0.0.0',
         hmr: {
-            host: '192.168.100.5' // Tell the phone where the CSS/JS is coming from
+            host: '192.168.100.5', 
+        },
+        // ✅ FIX: Allow the browser to load scripts from this server
+        cors: {
+            origin: '*', // Allow any origin to access resources
         },
     },
     plugins: [
