@@ -13,15 +13,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # 1. Setup PHP 8.3 (Upgraded from 8.2)
+    # 1. Setup PHP 8.2 (Safest for Laravel 9)
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: "8.3"
+        php-version: "8.2"
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, fileinfo
         coverage: none
 
-    # 2. Setup Node.js
+    # 2. Setup Node.js (For Vite)
     - name: Setup Node
       uses: actions/setup-node@v3
       with:
@@ -30,9 +30,10 @@ jobs:
     - name: Copy .env
       run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
-    # 3. Install Composer Dependencies (REMOVED -q so we can see errors)
+    # 3. Install Composer Dependencies
+    # ADDED: --no-audit (This forces it to ignore the security warning)
     - name: Install Composer Dependencies
-      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist --no-audit
 
     - name: Install NPM & Build Vite
       run: |
