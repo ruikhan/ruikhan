@@ -174,7 +174,7 @@ const features = [
     },
     { 
         group: 'Community & Action', 
-        title: 'Polls & Vote', 
+        title: 'Polls Vote & Freedom Wall', 
         subtitle: 'Citizen Referendum', 
         icon: '🗳️', 
         link: route('polls.index'),
