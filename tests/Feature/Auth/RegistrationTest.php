@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Facades\DB;
 
 class RegistrationTest extends TestCase
 {
@@ -19,6 +20,15 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register()
     {
+        // FIX: Manually create the 'citizen' role so validation passes
+        // We use DB::table to avoid guessing where your Role model is located
+        DB::table('roles')->insert([
+            'name' => 'citizen',
+            'guard_name' => 'web', // Standard for permission packages
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
