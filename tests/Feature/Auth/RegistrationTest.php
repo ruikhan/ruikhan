@@ -19,20 +19,20 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register()
     {
-        // 1. Create the 'citizen' role and GET ITS ID
-        $roleId = DB::table('roles')->insertGetId([
-            'name' => 'citizen',
-            'guard_name' => 'web',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // 1. Ensure the 'citizen' role exists in the database
+        // We use updateOrInsert to be safe
+        DB::table('roles')->updateOrInsert(
+            ['name' => 'citizen', 'guard_name' => 'web'],
+            ['created_at' => now(), 'updated_at' => now()]
+        );
 
-        // 2. Send the registration request using the ID
+        // 2. Send the request with the STRING "citizen"
+        // Since the table now exists and has this row, the validation will pass.
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'phone_number' => '09123456789',
-            'role' => $roleId, // FIX: Sending the ID (e.g., 1) instead of string "citizen"
+            'role' => 'citizen', 
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
