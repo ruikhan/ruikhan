@@ -22,7 +22,11 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\EnvironmentController;
 use App\Http\Controllers\SocialServiceController;
 use App\Http\Controllers\EmergencyController;
-
+use App\Http\Controllers\BusinessRegistrationController;
+use App\Http\Controllers\BusinessDashboardController;
+use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\CartController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -107,25 +111,45 @@ Route::middleware('auth')->group(function () {
     Route::get('/social-services', [SocialServiceController::class, 'index'])->name('social.index');
     Route::post('/social-services/apply', [SocialServiceController::class, 'store'])->name('social.store');
 
-    // --- RESTRICTED ROUTES (Business Owners) ---
-    Route::middleware(['auth', 'business'])->group(function () {
-        Route::get('/jobs/create', [JobPostingController::class, 'create'])->name('jobs.create');
-        Route::post('/jobs', [JobPostingController::class, 'store'])->name('jobs.store');
-    });
-
+    // --- BILLS & PAYMENTS ---
     Route::get('/bills/pay', [BillPaymentController::class, 'create'])->name('bills.create');
     Route::post('/bills', [BillPaymentController::class, 'store'])->name('bills.store');
     Route::get('/bills/history', [BillPaymentController::class, 'index'])->name('bills.index');
 
+    // --- MARKETPLACE (PUBLIC ACCESS FOR ALL AUTHENTICATED USERS) ---
+    // Browse all businesses
+    Route::get('/marketplace', [MarketplaceController::class, 'index'])
+        ->name('marketplace.index');
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
+    Route::delete('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
+    // View individual business details
+    Route::get('/marketplace/{id}', [MarketplaceController::class, 'show'])
+        ->name('marketplace.show');
+    
+    // Like/Unlike a business
+    Route::post('/marketplace/{id}/like', [MarketplaceController::class, 'toggleLike'])
+        ->name('marketplace.like');
+    
+    // Submit a review
+    Route::post('/marketplace/{id}/review', [MarketplaceController::class, 'submitReview'])
+        ->name('marketplace.review');
+
+    // --- RESTRICTED ROUTES (Business Owners Only) ---
+    Route::middleware('business')->group(function () {
+        Route::get('/jobs/create', [JobPostingController::class, 'create'])->name('jobs.create');
+        Route::post('/jobs', [JobPostingController::class, 'store'])->name('jobs.store');
+    });
+
     // --- ADMIN OFFICIALS AREA ---
-    Route::prefix('admin')->group(function () {
+    Route::prefix('admin')->middleware('admin')->group(function () {
         Route::get('/documents', [AdminDocumentController::class, 'index'])->name('admin.documents.index');
         Route::patch('/documents/{id}', [AdminDocumentController::class, 'update'])->name('admin.documents.update');
         Route::get('/documents/{id}', [AdminDocumentController::class, 'show'])->name('admin.documents.show');
         Route::get('/analytics', [AnalyticsController::class, 'index'])->name('admin.analytics');
     });
 
-    // PUBLIC VERIFICATION ROUTE
+    // --- PUBLIC VERIFICATION ROUTE ---
     Route::get('/documents/verify/{id}', function ($id) {
         $document = DocumentRequest::with('user')->findOrFail($id);
         
@@ -141,6 +165,40 @@ Route::middleware('auth')->group(function () {
         ]);
     })->name('documents.verify');
 
+    // --- BUSINESS INCUBATION MODULE ---
+    
+    // 🔹 Registration Portal (Protected: Only residents without active business)
+    Route::middleware('can.register.business')->group(function () {
+        Route::get('/business/register', [BusinessRegistrationController::class, 'create'])
+            ->name('business.register');
+        
+        Route::post('/business/register', [BusinessRegistrationController::class, 'store'])
+            ->name('business.store');
+    });
+
+    // 🔹 Business Owner Dashboard & Management (Protected: Must have active business + subscription)
+    Route::middleware('has.business')->prefix('business')->name('business.')->group(function () {
+        // Main Dashboard
+        Route::get('/dashboard', [BusinessDashboardController::class, 'index'])
+            ->name('dashboard');
+        
+        // Update Business Status (Available, Open, Closed, Full)
+        Route::patch('/status', [BusinessDashboardController::class, 'updateStatus'])
+            ->name('update-status');
+        
+        // Update Business Information
+        Route::patch('/update', [BusinessDashboardController::class, 'update'])
+            ->name('update');
+        
+
+            Route::resource('products', ProductController::class);
+            Route::patch('/products/{product}/toggle', [ProductController::class, 'toggleAvailability'])->name('products.toggle');
+
+        Route::get('/inventory', [BusinessInventoryController::class, 'index'])->name('inventory');
+        Route::get('/orders', [BusinessOrderController::class, 'index'])->name('orders');
+        Route::get('/reviews', [BusinessReviewController::class, 'index'])->name('reviews');
+        Route::get('/analytics', [BusinessAnalyticsController::class, 'index'])->name('analytics');
+    });
 });
 
 require __DIR__.'/auth.php';

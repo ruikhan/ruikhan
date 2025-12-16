@@ -65,6 +65,12 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        
+        // ✅ EXISTING BUSINESS MIDDLEWARE
         'business' => \App\Http\Middleware\EnsureUserIsBusiness::class,
+        
+        // ✅ NEW BUSINESS MODULE MIDDLEWARE (Added)
+        'has.business' => \App\Http\Middleware\HasBusiness::class,
+        'can.register.business' => \App\Http\Middleware\CanRegisterBusiness::class,
     ];
 }
