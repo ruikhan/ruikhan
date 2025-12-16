@@ -20,16 +20,16 @@ return new class extends Migration
         });
 
         // 2. Reviews/Feedbacks for Products
-        Schema::create('product_reviews', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_id'); // Assumes you have a products table
-            $table->foreignId('user_id'); // The resident who commented
-            $table->text('comment');
-            $table->integer('rating')->default(5); // 1-5 stars
-            $table->integer('likes_count')->default(0);
-            $table->boolean('is_visible')->default(true);
-            $table->timestamps();
-        });
+        // Schema::create('product_reviews', function (Blueprint $table) {
+        //     $table->id();
+        //     $table->foreignId('product_id'); // Assumes you have a products table
+        //     $table->foreignId('user_id'); // The resident who commented
+        //     $table->text('comment');
+        //     $table->integer('rating')->default(5); // 1-5 stars
+        //     $table->integer('likes_count')->default(0);
+        //     $table->boolean('is_visible')->default(true);
+        //     $table->timestamps();
+        // });
         
         // 3. SMS Messages Log (For the communication bridge)
         Schema::create('sms_messages', function (Blueprint $table) {
@@ -46,7 +46,6 @@ return new class extends Migration
     public function down()
     {
         Schema::dropIfExists('sms_messages');
-        Schema::dropIfExists('product_reviews');
         Schema::dropIfExists('business_profiles');
     }
 };
