@@ -10,7 +10,11 @@ const user = usePage().props.auth.user;
 const page = usePage();
 const showWizard = ref(false);
 
-// --- 1. TOAST NOTIFICATION LOGIC ---
+const isBusinessOwner = computed(() => {
+    return user.role === 'business_owner' || user.has_business;
+});
+
+// --- TOAST NOTIFICATION LOGIC ---
 const flashSuccess = computed(() => page.props.flash?.success);
 const showFlash = ref(false);
 
@@ -18,13 +22,13 @@ onMounted(() => {
     updateTime();
     clockTimer = setInterval(updateTime, 1000);
     carouselTimer = setInterval(nextSlide, 6000);
+    miniCarouselTimer = setInterval(nextMiniSlide, 4000);
 
     if (flashSuccess.value) {
         showFlash.value = true;
         setTimeout(() => showFlash.value = false, 4000);
     }
 
-    // Animate elements on scroll
     observeElements();
 });
 
@@ -44,7 +48,7 @@ const updateTime = () => {
     else greeting.value = 'Good Evening';
 };
 
-// --- CAROUSEL LOGIC ---
+// --- MAIN CAROUSEL LOGIC ---
 const currentSlide = ref(0);
 const slides = [
     {
@@ -77,13 +81,52 @@ const nextSlide = () => {
     currentSlide.value = (currentSlide.value + 1) % slides.length;
 };
 
+// ✨ NEW: MINI CAROUSEL FOR QUICK ACTIONS
+const currentMiniSlide = ref(0);
+const miniSlides = [
+    { icon: '🎯', title: 'Quick Pay', subtitle: 'Bills & Fees', link: route('bills.create'), color: 'from-green-500 to-emerald-600' },
+    { icon: '📋', title: 'New Request', subtitle: 'Documents', link: route('documents.create'), color: 'from-blue-500 to-indigo-600' },
+    { icon: '💼', title: 'Find Jobs', subtitle: 'Opportunities', link: route('jobs.index'), color: 'from-purple-500 to-fuchsia-600' },
+    { icon: '🏪', title: 'Shop Local', subtitle: 'Marketplace', link: route('marketplace.index'), color: 'from-orange-500 to-pink-600' },
+];
+
+const nextMiniSlide = () => {
+    currentMiniSlide.value = (currentMiniSlide.value + 1) % miniSlides.length;
+};
+
+// ✨ NEW: STATS DATA
+// const stats = ref([
+//     { label: 'Documents', value: '12', change: '+3', trend: 'up', icon: '📄', color: 'from-blue-500 to-blue-600' },
+//     { label: 'Payments', value: '₱2.4K', change: '+8%', trend: 'up', icon: '💰', color: 'from-green-500 to-green-600' },
+//     { label: 'Services', value: '8', change: '+2', trend: 'up', icon: '⚡', color: 'from-purple-500 to-purple-600' },
+//     { label: 'Rating', value: '4.9', change: '+0.2', trend: 'up', icon: '⭐', color: 'from-amber-500 to-amber-600' },
+// ]);
+
+// ✨ NEW: RECENT ACTIVITY
+const recentActivity = ref([
+    { id: 1, action: 'Document Approved', detail: 'Barangay Clearance', time: '2 mins ago', icon: '✅', color: 'text-green-400' },
+    { id: 2, action: 'Payment Received', detail: 'Water Bill - ₱450', time: '1 hour ago', icon: '💳', color: 'text-blue-400' },
+    { id: 3, action: 'New Opportunity', detail: 'Sales Associate Position', time: '3 hours ago', icon: '💼', color: 'text-purple-400' },
+    { id: 4, action: 'Poll Voted', detail: 'Community Project 2025', time: '5 hours ago', icon: '🗳️', color: 'text-pink-400' },
+]);
+
+// ✨ NEW: QUICK ACTIONS
+const quickActions = ref([
+    { title: 'Report Issue', icon: '🚨', action: 'wizard', color: 'from-red-500 to-pink-600' },
+    { title: 'Emergency', icon: '📞', link: route('emergency.index'), color: 'from-orange-500 to-red-600' },
+    { title: 'Health Check', icon: '🩺', link: route('health.index'), color: 'from-cyan-500 to-blue-600' },
+    { title: 'New Poll', icon: '🗳️', link: route('polls.index'), color: 'from-violet-500 to-purple-600' },
+]);
+
 // --- TIMERS ---
 let clockTimer;
 let carouselTimer;
+let miniCarouselTimer;
 
 onUnmounted(() => {
     clearInterval(clockTimer);
     clearInterval(carouselTimer);
+    clearInterval(miniCarouselTimer);
 });
 
 // --- SCROLL ANIMATION OBSERVER ---
@@ -106,7 +149,7 @@ const observeElements = () => {
 
 // --- FEATURE DATA ---
 const features = [
-    // GROUP 1: CORE SERVICES
+    // CORE SERVICES
     { 
         group: 'Core Services', 
         title: 'E-Documents', 
@@ -139,7 +182,7 @@ const features = [
         delay: '0.5s'
     },
     
-    // GROUP 2: COMMUNITY & ACTION
+    // COMMUNITY & ACTION
     { 
         group: 'Community & Action', 
         title: 'Issue Report', 
@@ -152,7 +195,7 @@ const features = [
         special: true,
         delay: '0.4s'
     },
-        { 
+    { 
         group: 'Community & Action', 
         title: 'Green Guard', 
         subtitle: 'Waste & Air Quality', 
@@ -164,28 +207,53 @@ const features = [
     },
     { 
         group: 'Community & Action', 
-        title: 'Social Care', 
+        title: 'Social Assisstance', 
         subtitle: 'Aid & Support', 
         icon: '🤝', 
         link: route('social.index'),
-        gradient: 'from-pink-600 to-fuchsia-700',
-        size: 'col-span-1 md:col-span-1',
-        delay: '0.6s'
-    },
-    { 
-        group: 'Community & Action', 
-        title: 'Polls & Vote', 
-        subtitle: 'Citizen Referendum', 
-        icon: '🗳️', 
-        link: route('polls.index'),
         gradient: 'from-violet-600 to-purple-700',
-        size: 'col-span-1 md:col-span-1',
+        size: 'col-span-2 md:col-span-2',
         delay: '0.7s'
     },
+    //     { 
+    //     group: 'Community & Action', 
+    //     title: 'Polls Vote & Freedom Wall', 
+    //     subtitle: 'Citizen Referendum', 
+    //     icon: '🗳️', 
+    //     link: route('polls.index'),
+    //     gradient: 'from-violet-600 to-purple-700',
+    //     size: 'col-span-1 md:col-span-1',
+    //     delay: '0.7s'
+    // },
+
     
-    // GROUP 3: MARKET & ENVIRONMENT
+    // MARKETPLACE & BUSINESS
     { 
-        group: 'Market & Environment', 
+        group: 'Marketplace & Business', 
+        title: 'Marketplace', 
+        subtitle: 'Browse Local Businesses', 
+        icon: '🌐', 
+        link: route('marketplace.index'),
+        gradient: 'from-purple-600 to-fuchsia-700',
+        size: 'col-span-1 md:col-span-2',
+        delay: '0.75s',
+        featured: true
+    },
+    { 
+        group: 'Marketplace & Business', 
+        title: isBusinessOwner.value ? 'My Business' : 'Business Hub', 
+        subtitle: isBusinessOwner.value ? 'Manage Dashboard' : 'Incubation & Register', 
+        icon: isBusinessOwner.value ? '📊' : '🏪', 
+        link: isBusinessOwner.value ? route('business.dashboard') : route('business.register'), 
+        gradient: isBusinessOwner.value ? 'from-blue-500 to-purple-600' : 'from-orange-500 to-amber-600',
+        size: 'col-span-1 md:col-span-2',
+        delay: '0.75s',
+        special: true
+    },
+    
+    // LOCAL ECONOMY
+    { 
+        group: 'Local Economy', 
         title: 'Market Prices', 
         subtitle: 'Live Commodity Rates', 
         icon: '📈', 
@@ -195,17 +263,17 @@ const features = [
         delay: '0.8s'
     },
     { 
-        group: 'Market & Environment', 
+        group: 'Local Economy', 
         title: 'Places', 
         subtitle: 'Business Directory', 
         icon: '🏨', 
-        link: route('establishments.store'),
+        link: route('establishments.index'),
         gradient: 'from-lime-600 to-green-700',
         size: 'col-span-1 md:col-span-1',
         delay: '0.3s'
     },
     { 
-        group: 'Market & Environment', 
+        group: 'Local Economy', 
         title: 'Local Jobs', 
         subtitle: 'Career Opportunities', 
         icon: '💼', 
@@ -214,9 +282,27 @@ const features = [
         size: 'col-span-2 md:col-span-2',
         delay: '1s'
     },
+        { 
+        group: 'Guidelines & Documentation', 
+        title: 'System Architectural', 
+        subtitle: 'Browse Local Businesses', 
+        icon: '🖧', 
+        link: route('system.architecture'),
+        gradient: 'from-red-600 to-black-700',
+        size: 'col-span-1 md:col-span-2',
+        delay: '0.75s',
+    },
+    { 
+        group: 'Guidelines & Documentation',
+        title: 'Workflow Documentation',   
+        icon: '🛢',
+        link: route('system.docs'),
+        gradient: 'from-red-600 to-black-700',
+        size: 'col-span-1 md:col-span-2',
+        delay: '0.75s',
+    },
 ];
 
-// --- GROUPING LOGIC ---
 const groupedFeatures = features.reduce((acc, feature) => {
     (acc[feature.group] = acc[feature.group] || []).push(feature);
     return acc;
@@ -228,7 +314,7 @@ const groupedFeatures = features.reduce((acc, feature) => {
 
     <AuthenticatedLayout>
         
-        <!-- Enhanced Toast Notification -->
+        <!-- Enhanced Toast -->
         <Transition name="slide-fade">
             <div v-if="showFlash && flashSuccess" 
                  class="fixed top-24 right-6 z-50 bg-gradient-to-r from-green-500 to-emerald-600 backdrop-blur-md border border-green-400/50 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-bounce-in">
@@ -254,7 +340,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
             <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#020617] to-black"></div>
             <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
 
-            <!-- Animated Waves -->
             <div class="absolute top-0 left-0 w-full h-[60vh] overflow-hidden opacity-30 mix-blend-screen pointer-events-none">
                 <svg class="absolute w-[200%] h-full animate-wave-slow top-0 left-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 200" preserveAspectRatio="none">
                     <path d="M0,100 C400,150 800,50 1600,100 L1600,0 L0,0 Z" fill="url(#gradBlue)" fill-opacity="0.4"></path>
@@ -268,30 +353,51 @@ const groupedFeatures = features.reduce((acc, feature) => {
                 </svg>
             </div>
 
-            <!-- Floating Orbs -->
             <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
             <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float-delayed"></div>
         </div>
 
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 font-sans">
             
-            <!-- Enhanced Header -->
-            <div class="flex flex-col md:flex-row justify-between items-end mb-10 animate-slide-down">
-                <div class="animate-fade-in-left">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="relative flex h-3 w-3">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                        </span>
-                        <p class="text-blue-300/80 text-xs font-bold tracking-widest uppercase">System Operational</p>
+            <!-- Enhanced Header with Stats -->
+            <div class="mb-8 animate-slide-down">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6">
+                    <div class="animate-fade-in-left">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="relative flex h-3 w-3">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                            </span>
+                            <p class="text-blue-300/80 text-xs font-bold tracking-widest uppercase">System Operational</p>
+                        </div>
+                        <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">
+                            {{ greeting }}, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 animate-gradient">{{ user.name.split(' ')[0] }}</span>
+                        </h1>
                     </div>
-                    <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">
-                        {{ greeting }}, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 animate-gradient">{{ user.name.split(' ')[0] }}</span>
-                    </h1>
+                    <div class="mt-4 md:mt-0 text-right animate-fade-in-right">
+                        <div class="text-6xl font-thin text-white tracking-tighter leading-none drop-shadow-lg">{{ time }}</div>
+                        <div class="text-white/50 font-medium text-sm uppercase tracking-widest mt-1">{{ date }}</div>
+                    </div>
                 </div>
-                <div class="mt-4 md:mt-0 text-right animate-fade-in-right">
-                    <div class="text-6xl font-thin text-white tracking-tighter leading-none drop-shadow-lg">{{ time }}</div>
-                    <div class="text-white/50 font-medium text-sm uppercase tracking-widest mt-1">{{ date }}</div>
+
+                <!-- ✨ NEW: Stats Overview -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 animate-scale-in">
+                    <!-- <div v-for="stat in stats" :key="stat.label" class="group relative overflow-hidden rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 p-4 hover:scale-105 transition-all duration-300">
+                        <div :class="`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-20 group-hover:opacity-30 transition-opacity`"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="text-2xl">{{ stat.icon }}</div>
+                                <span :class="[
+                                    'text-xs font-bold px-2 py-0.5 rounded-full',
+                                    stat.trend === 'up' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
+                                ]">
+                                    {{ stat.change }}
+                                </span>
+                            </div>
+                            <div class="text-2xl font-bold text-white mb-0.5">{{ stat.value }}</div>
+                            <div class="text-xs text-white/60 font-medium uppercase tracking-wider">{{ stat.label }}</div>
+                        </div>
+                    </div> -->
                 </div>
             </div>
 
@@ -299,7 +405,7 @@ const groupedFeatures = features.reduce((acc, feature) => {
                 
                 <div class="lg:col-span-8 space-y-6">
                     
-                    <!-- Enhanced Carousel -->
+                    <!-- Main Carousel -->
                     <div class="relative h-64 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 group animate-scale-in">
                         <div v-for="(slide, index) in slides" :key="slide.id" 
                              class="absolute inset-0 transition-all duration-1000 ease-in-out"
@@ -308,7 +414,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
                             <img :src="slide.image" class="absolute inset-0 w-full h-full object-cover opacity-60">
                             <div class="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent"></div>
                             
-                            <!-- Animated Particles -->
                             <div class="absolute inset-0 overflow-hidden">
                                 <div class="absolute w-2 h-2 bg-white/30 rounded-full animate-particle-1"></div>
                                 <div class="absolute w-1 h-1 bg-white/20 rounded-full animate-particle-2"></div>
@@ -329,7 +434,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
                             </div>
                         </div>
                         
-                        <!-- Enhanced Progress Indicators -->
                         <div class="absolute bottom-6 right-8 z-30 flex gap-2">
                             <button v-for="(slide, index) in slides" :key="index" @click="currentSlide = index" 
                                 :class="[
@@ -340,7 +444,40 @@ const groupedFeatures = features.reduce((acc, feature) => {
                         </div>
                     </div>
 
-                    <!-- Feature Groups with Enhanced Animations -->
+                    <!-- ✨ NEW: Mini Carousel for Quick Actions -->
+                    <div class="relative h-32 rounded-[2rem] overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 shadow-xl border border-white/20 animate-scale-in" style="animation-delay: 0.1s;">
+                        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+                        
+                        <div v-for="(slide, index) in miniSlides" :key="index"
+                             class="absolute inset-0 transition-all duration-700 ease-out"
+                             :class="index === currentMiniSlide ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'">
+                            <Link :href="slide.link" class="h-full flex items-center justify-between px-8">
+                                <div class="flex items-center gap-6">
+                                    <div class="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl border border-white/20 shadow-lg animate-pulse-slow">
+                                        {{ slide.icon }}
+                                    </div>
+                                    <div>
+                                        <h3 class="text-3xl font-black text-white mb-1">{{ slide.title }}</h3>
+                                        <p class="text-white/70 text-sm font-semibold">{{ slide.subtitle }}</p>
+                                    </div>
+                                </div>
+                                <svg class="w-8 h-8 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                </svg>
+                            </Link>
+                        </div>
+
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                            <button v-for="(slide, index) in miniSlides" :key="index" @click="currentMiniSlide = index"
+                                :class="[
+                                    'w-1.5 h-1.5 rounded-full transition-all duration-300',
+                                    index === currentMiniSlide ? 'bg-white w-6' : 'bg-white/40'
+                                ]">
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Feature Groups -->
                     <div v-for="(group, groupName, groupIndex) in groupedFeatures" :key="groupName" 
                          class="animate-on-scroll opacity-0 space-y-4"
                          :style="{ 'animation-delay': `${0.2 + groupIndex * 0.15}s` }">
@@ -354,7 +491,7 @@ const groupedFeatures = features.reduce((acc, feature) => {
                         </div>
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div v-for="(feature, featureIndex) in group" :key="feature.title" 
+                            <div v-for="feature in group" :key="feature.title" 
                                  :style="{ 'animation-delay': feature.delay }"
                                  :class="[
                                     'group/card relative overflow-hidden flex flex-col justify-between p-5 rounded-[1.75rem] shadow-xl border border-white/10 transition-all duration-500 hover:scale-[1.03] hover:shadow-2xl hover:shadow-white/10 hover:border-white/30 hover:-translate-y-1',
@@ -362,15 +499,18 @@ const groupedFeatures = features.reduce((acc, feature) => {
                                     feature.size,
                                     (groupName === 'Core Services' && feature.title === 'E-Documents') ? 'h-52' : 'h-36',
                                     feature.special ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-transparent animate-pulse-slow' : '',
+                                    feature.featured ? 'ring-2 ring-purple-500/50 ring-offset-2 ring-offset-transparent' : '',
                                     'animate-on-scroll opacity-0'
                                   ]">
                                 
-                                <!-- Enhanced Background Effects -->
                                 <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 mix-blend-overlay"></div>
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500"></div>
-                                
-                                <!-- Shine Effect -->
                                 <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/card:translate-x-full transition-transform duration-1000"></div>
+                                
+                                <!-- Featured Badge -->
+                                <div v-if="feature.featured" class="absolute top-4 left-4 z-20 px-2.5 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-bold text-white uppercase tracking-wider animate-pulse">
+                                    ✨ Popular
+                                </div>
                                 
                                 <Link v-if="feature.link" :href="feature.link" class="absolute inset-0 z-10 focus:outline-none"></Link>
                                 <button v-else-if="feature.action === 'wizard'" @click="showWizard = true" class="absolute inset-0 z-10 w-full h-full cursor-pointer focus:outline-none"></button>
@@ -399,15 +539,13 @@ const groupedFeatures = features.reduce((acc, feature) => {
                     </div>
                 </div>
 
-                <!-- Right Sidebar with Enhanced Design -->
+                <!-- Right Sidebar -->
                 <div class="lg:col-span-4 space-y-6">
                     
-                    <!-- Enhanced ID Card -->
+                    <!-- ID Card -->
                     <div class="group/id relative aspect-[1.58/1] rounded-[2rem] overflow-hidden shadow-2xl transition-all duration-500 hover:scale-105 hover:shadow-blue-500/20 border border-white/10 animate-scale-in" style="animation-delay: 0.2s;">
                         <div class="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black"></div>
                         <div class="absolute inset-0 opacity-30 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400 via-purple-500 to-transparent group-hover/id:opacity-50 transition-opacity"></div>
-                        
-                        <!-- Holographic Effect -->
                         <div class="absolute inset-0 bg-gradient-to-br from-blue-400/0 via-purple-400/10 to-pink-400/0 opacity-0 group-hover/id:opacity-100 transition-opacity duration-700"></div>
                         
                         <div class="absolute inset-0 p-6 flex flex-col justify-between">
@@ -421,15 +559,53 @@ const groupedFeatures = features.reduce((acc, feature) => {
                             <div>
                                 <div class="text-2xl text-white font-black tracking-wide uppercase mb-1">{{ user.name }}</div>
                                 <div class="flex items-center gap-2 mt-2">
-                                    <span class="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-[9px] font-bold text-blue-300 uppercase tracking-wider animate-pulse-slow">Citizen</span>
+                                    <span class="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-[9px] font-bold text-blue-300 uppercase tracking-wider animate-pulse-slow">
+                                        {{ isBusinessOwner ? 'Business Owner' : 'Citizen' }}
+                                    </span>
                                     <span class="px-2 py-0.5 bg-green-500/20 border border-green-500/30 rounded-full text-[9px] font-bold text-green-300 uppercase tracking-wider">Active Status</span>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    
+                    <Link :href="route('polls.index')" class="group/sos bg-gradient-to-br from-yellow-600 to-blue-600 border border-blue/20 p-6 rounded-[2rem] shadow-xl shadow-blue-600/30 hover:scale-[1.02] hover:shadow-blue-600/50 transition-all flex flex-col justify-between relative overflow-hidden h-40 animate-scale-in" style="animation-delay: 0.6s;">
+                        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+                        <div class="absolute -top-3 -right-3 w-8 h-8 bg-white/30 rounded-full animate-ping"></div>
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border-4 border-white/20 animate-ping-slow"></div>
+                        
+                        <div class="relative z-10 flex justify-between items-start">
+                            <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl shadow-lg group-hover/sos:scale-110 group-hover/sos:rotate-12 transition-all">@</div>
+                            <span class="text-[10px] font-black bg-white text-shadow-20px text-blue-600 px-2 py-1 rounded uppercase tracking-widest animate-pulse">ENOT-PILI</span>
+                        </div>
+                        
+                        <div class="relative z-10">
+                            <h3 class="font-black text-white text-2xl uppercase tracking-wide">Freedom Poll</h3>
+                            <p class="text-white/80 text-xs font-bold mt-1">E-PILI Suggestions and Rant</p>
+                        </div>
+                    </Link>
 
-                    <!-- Enhanced Map -->
-                    <div class="bg-black/40 backdrop-blur-xl border border-white/10 rounded-[2rem] p-1 h-80 shadow-2xl relative group/map animate-scale-in" style="animation-delay: 0.3s;">
+                    <!-- ✨ NEW: Quick Actions Panel -->
+                    <div class="rounded-[2rem] bg-black/40 backdrop-blur-xl border border-white/10 p-5 shadow-2xl animate-scale-in" style="animation-delay: 0.3s;">
+                        <h4 class="text-xs font-bold text-white/50 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>
+                            Quick Actions
+                        </h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button v-for="action in quickActions" :key="action.title"
+                                    @click="action.action === 'wizard' ? showWizard = true : null"
+                                    :class="`group relative h-24 rounded-2xl bg-gradient-to-br ${action.color} border border-white/20 p-4 transition-all duration-300 hover:scale-105 active:scale-95 overflow-hidden`">
+                                <div class="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors"></div>
+                                <Link v-if="action.link" :href="action.link" class="absolute inset-0 z-10"></Link>
+                                <div class="relative z-0 h-full flex flex-col justify-between">
+                                    <div class="text-2xl">{{ action.icon }}</div>
+                                    <div class="text-white font-bold text-sm">{{ action.title }}</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Map -->
+                    <div class="bg-black/40 backdrop-blur-xl border border-white/10 rounded-[2rem] p-1 h-80 shadow-2xl relative group/map animate-scale-in" style="animation-delay: 0.4s;">
                         <div class="absolute top-4 left-4 z-10 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white border border-white/10 shadow-lg animate-slide-in-down">
                             📍 Live Map & Alerts
                         </div>
@@ -437,13 +613,30 @@ const groupedFeatures = features.reduce((acc, feature) => {
                             <DashboardMap />
                         </div>
                     </div>
+
+                    <!-- ✨ NEW: Activity Feed -->
+                    <div class="rounded-[2rem] bg-black/40 backdrop-blur-xl border border-white/10 p-5 shadow-2xl max-h-80 overflow-y-auto animate-scale-in" style="animation-delay: 0.5s;">
+                        <h4 class="text-xs font-bold text-white/50 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                            Recent Activity
+                        </h4>
+                        <div class="space-y-3">
+                            <div v-for="activity in recentActivity" :key="activity.id" 
+                                 class="group flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all cursor-pointer">
+                                <div :class="`text-xl ${activity.color}`">{{ activity.icon }}</div>
+                                <div class="flex-1 min-w-0">
+                                    <h5 class="text-sm font-semibold text-white truncate">{{ activity.action }}</h5>
+                                    <p class="text-xs text-white/60 truncate">{{ activity.detail }}</p>
+                                    <span class="text-[10px] text-white/40 font-medium">{{ activity.time }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <!-- Enhanced Emergency Button -->
-                    <Link :href="route('emergency.index')" class="group/sos bg-gradient-to-br from-red-600 to-orange-600 border border-white/20 p-6 rounded-[2rem] shadow-xl shadow-red-600/30 hover:scale-[1.02] hover:shadow-red-600/50 transition-all flex flex-col justify-between relative overflow-hidden h-40 animate-scale-in" style="animation-delay: 0.4s;">
+                    <!-- Emergency Button -->
+                    <Link :href="route('emergency.index')" class="group/sos bg-gradient-to-br from-red-600 to-orange-600 border border-white/20 p-6 rounded-[2rem] shadow-xl shadow-red-600/30 hover:scale-[1.02] hover:shadow-red-600/50 transition-all flex flex-col justify-between relative overflow-hidden h-40 animate-scale-in" style="animation-delay: 0.6s;">
                         <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
                         <div class="absolute -top-3 -right-3 w-8 h-8 bg-white/30 rounded-full animate-ping"></div>
-                        
-                        <!-- Pulsing Ring -->
                         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border-4 border-white/20 animate-ping-slow"></div>
                         
                         <div class="relative z-10 flex justify-between items-start">
@@ -456,55 +649,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
                             <p class="text-white/80 text-xs font-bold mt-1">Tap for Command Center</p>
                         </div>
                     </Link>
-
-                    <!-- Enhanced Documentation Links -->
-                <div class="rounded-[2rem] bg-[#1c1c1e]/40 backdrop-blur-xl border border-white/10 p-2 shadow-2xl animate-slide-in-up" style="animation-delay: 0.5s;">
-    
-    <div class="px-4 py-2 flex items-center justify-between">
-        <h4 class="text-[10px] font-bold text-white/40 uppercase tracking-widest">System Resources</h4>
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
-    </div>
-
-    <div class="grid grid-cols-2 gap-2">
-        
-        <Link :href="route('system.architecture')" 
-              class="group relative h-32 rounded-[1.5rem] bg-white/5 border border-white/5 overflow-hidden transition-all duration-300 hover:bg-white/10 hover:border-white/20 active:scale-95">
-            
-            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
-            <div class="relative z-10 h-full p-5 flex flex-col justify-between">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-white font-bold text-sm leading-tight group-hover:text-blue-200 transition-colors">User Guide</h3>
-                    <p class="text-[10px] text-white/40 font-medium mt-0.5">Workflow</p>
-                </div>
-            </div>
-        </Link>
-
-        <Link :href="route('system.docs')" 
-              class="group relative h-32 rounded-[1.5rem] bg-white/5 border border-white/5 overflow-hidden transition-all duration-300 hover:bg-white/10 hover:border-white/20 active:scale-95">
-            
-            <div class="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
-            <div class="relative z-10 h-full p-5 flex flex-col justify-between">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-fuchsia-400 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-white font-bold text-sm leading-tight group-hover:text-purple-200 transition-colors">System Docs</h3>
-                    <p class="text-[10px] text-white/40 font-medium mt-0.5">Technical</p>
-                </div>
-            </div>
-        </Link>
-
-    </div>
-</div>
                 </div>
             </div>
         </div>

@@ -30,17 +30,25 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        // 1. Calculate Cart Count from Session
+        $cart = $request->session()->get('cart', []);
+        $cartCount = array_reduce($cart, fn($carry, $item) => $carry + $item['quantity'], 0);
+
         return array_merge(parent::share($request), [
             'auth' => [
                 'user' => $request->user(),
             ],
-            
-            // 👇 THIS IS THE MISSING PART 👇
+
+            // 👇 NEW: Global Cart Data
+            'cart' => [
+                'count' => $cartCount,
+            ],
+            // 👆 END NEW CODE
+
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
-            // 👆 END OF NEW CODE 👆
 
             'ziggy' => function () use ($request) {
                 return array_merge((new Ziggy)->toArray(), [

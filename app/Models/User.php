@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone_number', // Added: Needed for registration
+        'role',         // Added: Needed for 'resident', 'business_owner', etc.
     ];
 
     /**
@@ -41,24 +43,130 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
-    public function documentRequests()
-{
-    return $this->hasMany(DocumentRequest::class);
-}
-// A User can submit many concerns
-public function concerns()
-{
-    return $this->hasMany(Concern::class);
-}
 
-// A Business Owner (User) can post many jobs
-public function jobPostings()
-{
-    return $this->hasMany(JobPosting::class);
-}
-// Add this inside app/Models/User.php
-public function billPayments()
-{
-    return $this->hasMany(BillPayment::class);
-}
+    /* |--------------------------------------------------------------------------
+    | Existing Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    public function documentRequests()
+    {
+        return $this->hasMany(DocumentRequest::class);
+    }
+
+    public function concerns()
+    {
+        return $this->hasMany(Concern::class);
+    }
+
+    public function jobPostings()
+    {
+        return $this->hasMany(JobPosting::class);
+    }
+
+    public function billPayments()
+    {
+        return $this->hasMany(BillPayment::class);
+    }
+
+    /* |--------------------------------------------------------------------------
+    | New Business Module Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * A User owns ONE Business Profile
+     */
+    public function business()
+    {
+        return $this->hasOne(Business::class);
+    }
+
+    /**
+     * A User can have many subscription records (history of payments)
+     */
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /* |--------------------------------------------------------------------------
+    | Helper Methods
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Check if the user has a business profile
+     */
+    public function isBusinessOwner()
+    {
+        // Checks if role is set AND if they actually have a business record created
+        return $this->role === 'business_owner' || $this->business()->exists();
+    }
+
+    /**
+     * ✅ NEW: Check if user has an active subscription
+     * This is used by the HasBusiness middleware
+     */
+    public function hasActiveSubscription()
+    {
+        // If user doesn't have a business, they can't have a subscription
+        if (!$this->business) {
+            return false;
+        }
+
+        // Get the most recent subscription
+        $latestSubscription = $this->business->subscriptions()
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        // Check if it exists and is still valid
+        return $latestSubscription && $latestSubscription->isValid();
+    }
+
+    /**
+     * ✅ NEW: Get the user's current subscription tier
+     * Useful for conditional features (e.g., "Premium only" features)
+     */
+    public function currentSubscriptionTier()
+    {
+        // If user doesn't have a business, no tier
+        if (!$this->business) {
+            return null;
+        }
+
+        // Get the most recent ACTIVE subscription
+        $latestSubscription = $this->business->subscriptions()
+            ->where('expires_at', '>', now())
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        return $latestSubscription?->tier; // Returns 'basic', 'standard', 'premium', or null
+    }
+
+    /**
+     * ✅ BONUS: Get days remaining in current subscription
+     */
+    public function subscriptionDaysRemaining()
+    {
+        if (!$this->hasActiveSubscription()) {
+            return 0;
+        }
+
+        $latestSubscription = $this->business->subscriptions()
+            ->where('expires_at', '>', now())
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        return $latestSubscription->expires_at->diffInDays(now());
+    }
+
+    /**
+     * ✅ BONUS: Check if user has a specific tier
+     * Usage: $user->hasTier('premium')
+     */
+    public function hasTier($tier)
+    {
+        return $this->currentSubscriptionTier() === $tier;
+    }
 }

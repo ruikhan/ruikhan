@@ -184,6 +184,17 @@ const features = [
     },
     
     // GROUP 3: MARKET & ENVIRONMENT
+    // --- NEW BUSINESS INCUBATION PORTAL ---
+    { 
+        group: 'Market & Environment', 
+        title: 'Business Hub', 
+        subtitle: 'Incubation & Register', 
+        icon: '🚀', 
+        link: route('business.register'), 
+        gradient: 'from-orange-500 to-amber-600',
+        size: 'col-span-1 md:col-span-2', // Made wide to stand out
+        delay: '0.75s'
+    },
     { 
         group: 'Market & Environment', 
         title: 'Market Prices', 
@@ -211,7 +222,7 @@ const features = [
         icon: '💼', 
         link: route('jobs.index'),
         gradient: 'from-yellow-600 to-red-700',
-        size: 'col-span-2 md:col-span-2',
+        size: 'col-span-2 md:col-span-4', // Full width at bottom
         delay: '1s'
     },
 ];
@@ -228,7 +239,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
 
     <AuthenticatedLayout>
         
-        <!-- Enhanced Toast Notification -->
         <Transition name="slide-fade">
             <div v-if="showFlash && flashSuccess" 
                  class="fixed top-24 right-6 z-50 bg-gradient-to-r from-green-500 to-emerald-600 backdrop-blur-md border border-green-400/50 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-bounce-in">
@@ -249,12 +259,10 @@ const groupedFeatures = features.reduce((acc, feature) => {
             </div>
         </Transition>
 
-        <!-- Enhanced Background -->
         <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
             <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#020617] to-black"></div>
             <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
 
-            <!-- Animated Waves -->
             <div class="absolute top-0 left-0 w-full h-[60vh] overflow-hidden opacity-30 mix-blend-screen pointer-events-none">
                 <svg class="absolute w-[200%] h-full animate-wave-slow top-0 left-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 200" preserveAspectRatio="none">
                     <path d="M0,100 C400,150 800,50 1600,100 L1600,0 L0,0 Z" fill="url(#gradBlue)" fill-opacity="0.4"></path>
@@ -268,14 +276,12 @@ const groupedFeatures = features.reduce((acc, feature) => {
                 </svg>
             </div>
 
-            <!-- Floating Orbs -->
             <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
             <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float-delayed"></div>
         </div>
 
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 font-sans">
             
-            <!-- Enhanced Header -->
             <div class="flex flex-col md:flex-row justify-between items-end mb-10 animate-slide-down">
                 <div class="animate-fade-in-left">
                     <div class="flex items-center gap-2 mb-2">
@@ -299,7 +305,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
                 
                 <div class="lg:col-span-8 space-y-6">
                     
-                    <!-- Enhanced Carousel -->
                     <div class="relative h-64 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 group animate-scale-in">
                         <div v-for="(slide, index) in slides" :key="slide.id" 
                              class="absolute inset-0 transition-all duration-1000 ease-in-out"
@@ -308,7 +313,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
                             <img :src="slide.image" class="absolute inset-0 w-full h-full object-cover opacity-60">
                             <div class="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent"></div>
                             
-                            <!-- Animated Particles -->
                             <div class="absolute inset-0 overflow-hidden">
                                 <div class="absolute w-2 h-2 bg-white/30 rounded-full animate-particle-1"></div>
                                 <div class="absolute w-1 h-1 bg-white/20 rounded-full animate-particle-2"></div>
@@ -329,7 +333,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
                             </div>
                         </div>
                         
-                        <!-- Enhanced Progress Indicators -->
                         <div class="absolute bottom-6 right-8 z-30 flex gap-2">
                             <button v-for="(slide, index) in slides" :key="index" @click="currentSlide = index" 
                                 :class="[
@@ -340,7 +343,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
                         </div>
                     </div>
 
-                    <!-- Feature Groups with Enhanced Animations -->
                     <div v-for="(group, groupName, groupIndex) in groupedFeatures" :key="groupName" 
                          class="animate-on-scroll opacity-0 space-y-4"
                          :style="{ 'animation-delay': `${0.2 + groupIndex * 0.15}s` }">
@@ -365,11 +367,9 @@ const groupedFeatures = features.reduce((acc, feature) => {
                                     'animate-on-scroll opacity-0'
                                   ]">
                                 
-                                <!-- Enhanced Background Effects -->
                                 <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 mix-blend-overlay"></div>
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500"></div>
                                 
-                                <!-- Shine Effect -->
                                 <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/card:translate-x-full transition-transform duration-1000"></div>
                                 
                                 <Link v-if="feature.link" :href="feature.link" class="absolute inset-0 z-10 focus:outline-none"></Link>
@@ -399,15 +399,12 @@ const groupedFeatures = features.reduce((acc, feature) => {
                     </div>
                 </div>
 
-                <!-- Right Sidebar with Enhanced Design -->
                 <div class="lg:col-span-4 space-y-6">
                     
-                    <!-- Enhanced ID Card -->
                     <div class="group/id relative aspect-[1.58/1] rounded-[2rem] overflow-hidden shadow-2xl transition-all duration-500 hover:scale-105 hover:shadow-blue-500/20 border border-white/10 animate-scale-in" style="animation-delay: 0.2s;">
                         <div class="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black"></div>
                         <div class="absolute inset-0 opacity-30 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400 via-purple-500 to-transparent group-hover/id:opacity-50 transition-opacity"></div>
                         
-                        <!-- Holographic Effect -->
                         <div class="absolute inset-0 bg-gradient-to-br from-blue-400/0 via-purple-400/10 to-pink-400/0 opacity-0 group-hover/id:opacity-100 transition-opacity duration-700"></div>
                         
                         <div class="absolute inset-0 p-6 flex flex-col justify-between">
@@ -428,7 +425,6 @@ const groupedFeatures = features.reduce((acc, feature) => {
                         </div>
                     </div>
 
-                    <!-- Enhanced Map -->
                     <div class="bg-black/40 backdrop-blur-xl border border-white/10 rounded-[2rem] p-1 h-80 shadow-2xl relative group/map animate-scale-in" style="animation-delay: 0.3s;">
                         <div class="absolute top-4 left-4 z-10 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white border border-white/10 shadow-lg animate-slide-in-down">
                             📍 Live Map & Alerts
@@ -438,12 +434,10 @@ const groupedFeatures = features.reduce((acc, feature) => {
                         </div>
                     </div>
                     
-                    <!-- Enhanced Emergency Button -->
                     <Link :href="route('emergency.index')" class="group/sos bg-gradient-to-br from-red-600 to-orange-600 border border-white/20 p-6 rounded-[2rem] shadow-xl shadow-red-600/30 hover:scale-[1.02] hover:shadow-red-600/50 transition-all flex flex-col justify-between relative overflow-hidden h-40 animate-scale-in" style="animation-delay: 0.4s;">
                         <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
                         <div class="absolute -top-3 -right-3 w-8 h-8 bg-white/30 rounded-full animate-ping"></div>
                         
-                        <!-- Pulsing Ring -->
                         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border-4 border-white/20 animate-ping-slow"></div>
                         
                         <div class="relative z-10 flex justify-between items-start">
@@ -457,54 +451,53 @@ const groupedFeatures = features.reduce((acc, feature) => {
                         </div>
                     </Link>
 
-                    <!-- Enhanced Documentation Links -->
-                <div class="rounded-[2rem] bg-[#1c1c1e]/40 backdrop-blur-xl border border-white/10 p-2 shadow-2xl animate-slide-in-up" style="animation-delay: 0.5s;">
+                    <div class="rounded-[2rem] bg-[#1c1c1e]/40 backdrop-blur-xl border border-white/10 p-2 shadow-2xl animate-slide-in-up" style="animation-delay: 0.5s;">
     
-    <div class="px-4 py-2 flex items-center justify-between">
-        <h4 class="text-[10px] font-bold text-white/40 uppercase tracking-widest">System Resources</h4>
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
-    </div>
+                        <div class="px-4 py-2 flex items-center justify-between">
+                            <h4 class="text-[10px] font-bold text-white/40 uppercase tracking-widest">System Resources</h4>
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+                        </div>
 
-    <div class="grid grid-cols-2 gap-2">
-        
-        <Link :href="route('system.architecture')" 
-              class="group relative h-32 rounded-[1.5rem] bg-white/5 border border-white/5 overflow-hidden transition-all duration-300 hover:bg-white/10 hover:border-white/20 active:scale-95">
-            
-            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            
+                            <Link :href="route('system.architecture')" 
+                                  class="group relative h-32 rounded-[1.5rem] bg-white/5 border border-white/5 overflow-hidden transition-all duration-300 hover:bg-white/10 hover:border-white/20 active:scale-95">
+                                
+                                <div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-            <div class="relative z-10 h-full p-5 flex flex-col justify-between">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-white font-bold text-sm leading-tight group-hover:text-blue-200 transition-colors">User Guide</h3>
-                    <p class="text-[10px] text-white/40 font-medium mt-0.5">Workflow</p>
-                </div>
-            </div>
-        </Link>
+                                <div class="relative z-10 h-full p-5 flex flex-col justify-between">
+                                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
+                                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-white font-bold text-sm leading-tight group-hover:text-blue-200 transition-colors">User Guide</h3>
+                                        <p class="text-[10px] text-white/40 font-medium mt-0.5">Workflow</p>
+                                    </div>
+                                </div>
+                            </Link>
 
-        <Link :href="route('system.docs')" 
-              class="group relative h-32 rounded-[1.5rem] bg-white/5 border border-white/5 overflow-hidden transition-all duration-300 hover:bg-white/10 hover:border-white/20 active:scale-95">
-            
-            <div class="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                            <Link :href="route('system.docs')" 
+                                  class="group relative h-32 rounded-[1.5rem] bg-white/5 border border-white/5 overflow-hidden transition-all duration-300 hover:bg-white/10 hover:border-white/20 active:scale-95">
+                                
+                                <div class="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-            <div class="relative z-10 h-full p-5 flex flex-col justify-between">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-fuchsia-400 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-white font-bold text-sm leading-tight group-hover:text-purple-200 transition-colors">System Docs</h3>
-                    <p class="text-[10px] text-white/40 font-medium mt-0.5">Technical</p>
-                </div>
-            </div>
-        </Link>
+                                <div class="relative z-10 h-full p-5 flex flex-col justify-between">
+                                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-fuchsia-400 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
+                                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-white font-bold text-sm leading-tight group-hover:text-purple-200 transition-colors">System Docs</h3>
+                                        <p class="text-[10px] text-white/40 font-medium mt-0.5">Technical</p>
+                                    </div>
+                                </div>
+                            </Link>
 
-    </div>
-</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -606,75 +599,23 @@ const groupedFeatures = features.reduce((acc, feature) => {
 }
 .animate-pulse-slow { animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
-/* Particle Animations */
+/* Particle Animations - Completed */
 @keyframes particle-1 {
     0% { top: 10%; left: 10%; opacity: 0; }
     50% { opacity: 1; }
-    100% { top: 90%; left: 90%; opacity: 0; }
+    100% { top: 20%; left: 20%; opacity: 0; }
 }
-.animate-particle-1 { animation: particle-1 15s ease-in-out infinite; }
-
 @keyframes particle-2 {
-    0% { top: 20%; right: 10%; opacity: 0; }
+    0% { top: 80%; left: 80%; opacity: 0; }
     50% { opacity: 1; }
-    100% { bottom: 20%; right: 90%; opacity: 0; }
+    100% { top: 70%; left: 90%; opacity: 0; }
 }
-.animate-particle-2 { animation: particle-2 20s ease-in-out infinite; }
-
 @keyframes particle-3 {
-    0% { bottom: 10%; left: 80%; opacity: 0; }
+    0% { top: 50%; left: 50%; opacity: 0; }
     50% { opacity: 1; }
-    100% { top: 10%; left: 20%; opacity: 0; }
+    100% { top: 60%; left: 40%; opacity: 0; }
 }
-.animate-particle-3 { animation: particle-3 18s ease-in-out infinite; }
-
-/* Scroll Animation */
-.animate-on-scroll {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
-                transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.animate-on-scroll.animate-visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* Slide Fade Transition */
-.slide-fade-enter-active {
-    transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.slide-fade-leave-active {
-    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.slide-fade-enter-from {
-    transform: translateX(20px);
-    opacity: 0;
-}
-
-.slide-fade-leave-to {
-    transform: translateX(-20px);
-    opacity: 0;
-}
-
-/* Smooth Scrollbar */
-::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(30, 41, 59, 0.3);
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(59, 130, 246, 0.5);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(59, 130, 246, 0.7);
-}
+.animate-particle-1 { animation: particle-1 4s ease-in-out infinite; }
+.animate-particle-2 { animation: particle-2 5s ease-in-out infinite; }
+.animate-particle-3 { animation: particle-3 6s ease-in-out infinite; }
 </style>

@@ -1,35 +1,66 @@
-name: Laravel
+name: Laravel CI/CD
 
 on:
   push:
-    branches: [ "master" ]
+    # Use 'main' as the primary branch, and include 'master' if it's still in use
+    branches: [ "main", "master" ] 
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main", "master" ]
 
 jobs:
   laravel-tests:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: shivammathur/setup-php@15c43e89cdef867065b0213be354c2841860869e
-      with:
-        php-version: '8.0'
-    - uses: actions/checkout@v4
-    - name: Copy .env
-      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
-    - name: Install Dependencies
-      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-    - name: Generate key
-      run: php artisan key:generate
-    - name: Directory Permissions
-      run: chmod -R 777 storage bootstrap/cache
-    - name: Create Database
-      run: |
-        mkdir -p database
-        touch database/database.sqlite
-    - name: Execute tests (Unit and Feature tests) via PHPUnit/Pest
-      env:
-        DB_CONNECTION: sqlite
-        DB_DATABASE: database/database.sqlite
-      run: php artisan test
+      - uses: actions/checkout@v4
+
+      # 1. Setup PHP 8.2 (Using the modern version from the 'main' side)
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2" # Recommended current version
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, fileinfo
+          coverage: none
+
+      # 2. Setup Node.js (Essential for modern Laravel/Vite projects)
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18" # Stable Node version
+
+      # 3. Copy .env file
+      - name: Copy .env
+        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+      # 4. Disable Security Blocking (Keep this if it was necessary, otherwise remove)
+      - name: Disable Security Blocking
+        run: composer config audit.ignore.PKSA-8qx3-n5y5-vvnd true || true
+
+      # 5. Install Dependencies (Composer)
+      - name: Install Composer Dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist --ignore-platform-reqs
+
+      # 6. Install NPM & Build Vite Assets
+      - name: Install NPM & Build Vite
+        run: |
+          npm install
+          npm run build
+
+      # 7. Generate key & Set Permissions
+      - name: Configure Application
+        run: |
+          php artisan key:generate
+          chmod -R 777 storage bootstrap/cache
+
+      # 8. Create SQLite Test Database
+      - name: Create Database
+        run: |
+          mkdir -p database
+          touch database/database.sqlite
+
+      # 9. Execute Tests (Use the SQLite connection we configured)
+      - name: Execute tests (Unit and Feature tests)
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: php artisan test

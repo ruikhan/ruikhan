@@ -45,7 +45,7 @@ class BillPaymentController extends Controller
         ]);
 
         // Redirect to a "Receipt" page (or back with success message)
-        return redirect()->route('bills.history')->with('success', "Payment Successful! Ref: $refCode");
+        return redirect()->route('bills.index')->with('success', "Payment Successful! Ref: $refCode");
     }
 
     // 3. Show History
