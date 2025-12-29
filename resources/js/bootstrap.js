@@ -12,35 +12,43 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
  * Redis, and Socket.io out of the box.
  */
 
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
+// ✅ FIXED: Only initialize Pusher if credentials are configured
+const pusherKey = import.meta.env.VITE_PUSHER_APP_KEY;
 
-window.Pusher = Pusher;
+if (pusherKey && pusherKey.trim() !== '' && pusherKey !== 'undefined') {
+    import('laravel-echo').then(({ default: Echo }) => {
+        import('pusher-js').then(({ default: Pusher }) => {
+            window.Pusher = Pusher;
 
-window.Echo = new Echo({
-    broadcaster: 'pusher',
-    key: import.meta.env.VITE_PUSHER_APP_KEY,
-    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
-    wsHost: import.meta.env.VITE_PUSHER_HOST ?? window.location.hostname,
-    wsPort: import.meta.env.VITE_PUSHER_PORT ?? 6001,
-    wssPort: import.meta.env.VITE_PUSHER_PORT ?? 6001,
-    forceTLS: false,
-    encrypted: false,
-    disableStats: true,
-    enabledTransports: ['ws', 'wss'],
-    authEndpoint: '/broadcasting/auth',
-    auth: {
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-        },
-    },
-});
+            window.Echo = new Echo({
+                broadcaster: 'pusher',
+                key: pusherKey,
+                cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
+                wsHost: import.meta.env.VITE_PUSHER_HOST ?? window.location.hostname,
+                wsPort: import.meta.env.VITE_PUSHER_PORT ?? 6001,
+                wssPort: import.meta.env.VITE_PUSHER_PORT ?? 6001,
+                forceTLS: false,
+                encrypted: false,
+                disableStats: true,
+                enabledTransports: ['ws', 'wss'],
+                authEndpoint: '/broadcasting/auth',
+                auth: {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                    },
+                },
+            });
 
-// Debug logging (optional - remove in production)
-window.Echo.connector.pusher.connection.bind('connected', () => {
-    console.log('✅ WebSocket connected!');
-});
+            // Debug logging
+            window.Echo.connector.pusher.connection.bind('connected', () => {
+                console.log('✅ WebSocket connected!');
+            });
 
-window.Echo.connector.pusher.connection.bind('error', (err) => {
-    console.error('❌ WebSocket error:', err);
-});
+            window.Echo.connector.pusher.connection.bind('error', (err) => {
+                console.error('❌ WebSocket error:', err);
+            });
+        });
+    });
+} else {
+    console.log('ℹ️ Pusher broadcasting disabled - VITE_PUSHER_APP_KEY not configured');
+}
