@@ -10,47 +10,33 @@ return new class extends Migration
     {
         Schema::table('document_requests', function (Blueprint $table) {
             
-            // 1. Add Tracking Code (Essential for the new system)
-            if (!Schema::hasColumn('document_requests', 'tracking_code')) {
-                $table->string('tracking_code')->nullable()->after('id');
-            }
+            // ❌ REMOVED: tracking_code (already in create migration)
+            // ❌ REMOVED: department (already in create migration)
+            // ❌ REMOVED: data (already in create migration as json)
 
-            // 2. Add Department (Essential for sorting requests)
-            if (!Schema::hasColumn('document_requests', 'department')) {
-                $table->string('department')->nullable()->after('user_id');
-            }
-
-            // 3. Add Document Type (e.g., "Birth Certificate")
+            // 3. Add Document Type only if missing (alias for service_type)
             if (!Schema::hasColumn('document_requests', 'document_type')) {
-                $table->string('document_type')->nullable()->after('department');
+                $table->string('document_type')->nullable()->after('service_type');
             }
 
-            // 4. Add the MAGIC JSON COLUMN (Holds tin_number, mothers_name, etc.)
-            if (!Schema::hasColumn('document_requests', 'data')) {
-                $table->json('data')->nullable()->after('document_type');
-            }
-
-            // 5. Add Remarks/Status if missing
+            // 5. Add User Remarks if missing
             if (!Schema::hasColumn('document_requests', 'user_remarks')) {
                 $table->text('user_remarks')->nullable();
             }
-            if (!Schema::hasColumn('document_requests', 'status')) {
-                $table->string('status')->default('pending');
-            }
             
-            // 6. Support for the old "service_type" just in case, to prevent crashes
-            if (!Schema::hasColumn('document_requests', 'service_type')) {
-                $table->string('service_type')->nullable();
-            }
+            // Note: status and service_type already exist in create migration
         });
     }
 
     public function down()
     {
-        // We rarely need to reverse this in development, 
-        // but this keeps it valid.
         Schema::table('document_requests', function (Blueprint $table) {
-            $table->dropColumn(['data', 'department', 'document_type']);
+            if (Schema::hasColumn('document_requests', 'document_type')) {
+                $table->dropColumn('document_type');
+            }
+            if (Schema::hasColumn('document_requests', 'user_remarks')) {
+                $table->dropColumn('user_remarks');
+            }
         });
     }
 };
