@@ -9,16 +9,17 @@ return new class extends Migration
     public function up()
     {
         Schema::table('document_requests', function (Blueprint $table) {
-            // 1. The missing column causing your error
-            // We use 'text' or 'string' to store the file path
-            $table->string('attachments')->nullable()->after('data');
+            // Check for attachments column before adding
+            if (!Schema::hasColumn('document_requests', 'attachments')) {
+                $table->string('attachments')->nullable()->after('data');
+            }
 
-            // 2. These are used in the Admin Controller we updated earlier
-            // If you already have 'admin_note', you can ignore this or rename it
+            // Admin remarks
             if (!Schema::hasColumn('document_requests', 'admin_remarks')) {
                 $table->text('admin_remarks')->nullable()->after('status');
             }
             
+            // Appointment date
             if (!Schema::hasColumn('document_requests', 'appointment_date')) {
                 $table->dateTime('appointment_date')->nullable()->after('admin_remarks');
             }
@@ -28,7 +29,18 @@ return new class extends Migration
     public function down()
     {
         Schema::table('document_requests', function (Blueprint $table) {
-            $table->dropColumn(['attachments', 'admin_remarks', 'appointment_date']);
+            // Check each column exists before dropping
+            if (Schema::hasColumn('document_requests', 'attachments')) {
+                $table->dropColumn('attachments');
+            }
+            
+            if (Schema::hasColumn('document_requests', 'admin_remarks')) {
+                $table->dropColumn('admin_remarks');
+            }
+            
+            if (Schema::hasColumn('document_requests', 'appointment_date')) {
+                $table->dropColumn('appointment_date');
+            }
         });
     }
 };

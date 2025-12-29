@@ -17,11 +17,19 @@ return new class extends Migration
                 $table->dateTime('appointment_date')->nullable()->after('status');
             }
 
-            // 2. RELAX LEGACY COLUMNS (Make them nullable)
-            $table->text('purpose')->nullable()->change();
-            $table->string('civil_status')->nullable()->change();
-            $table->string('contact_number')->nullable()->change();
-            $table->integer('years_of_residency')->nullable()->change();
+            // 2. RELAX LEGACY COLUMNS (Make them nullable) - Only if they exist
+            if (Schema::hasColumn('document_requests', 'purpose')) {
+                $table->text('purpose')->nullable()->change();
+            }
+            if (Schema::hasColumn('document_requests', 'civil_status')) {
+                $table->string('civil_status')->nullable()->change();
+            }
+            if (Schema::hasColumn('document_requests', 'contact_number')) {
+                $table->string('contact_number')->nullable()->change();
+            }
+            if (Schema::hasColumn('document_requests', 'years_of_residency')) {
+                $table->integer('years_of_residency')->nullable()->change();
+            }
         });
 
         // 3. STANDARDIZE NAMING (Handle Duplicates Safely)
@@ -47,7 +55,12 @@ return new class extends Migration
         Schema::table('document_requests', function (Blueprint $table) {
             // We can't easily undo the drops/renames because we don't know 
             // exactly which state it was in, but we can remove the new columns.
-            $table->dropColumn(['attachments', 'appointment_date']);
+            if (Schema::hasColumn('document_requests', 'attachments')) {
+                $table->dropColumn('attachments');
+            }
+            if (Schema::hasColumn('document_requests', 'appointment_date')) {
+                $table->dropColumn('appointment_date');
+            }
         });
     }
 };

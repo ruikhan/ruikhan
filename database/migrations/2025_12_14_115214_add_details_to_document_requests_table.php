@@ -9,26 +9,44 @@ return new class extends Migration
     public function up()
     {
         Schema::table('document_requests', function (Blueprint $table) {
-
-            $table->string('tracking_code')->after('id');
-            $table->string('category')->default('personal');
-            $table->string('business_name')->nullable();
-            $table->string('tin_number')->nullable();
-            $table->string('civil_status');
-            $table->integer('years_of_residency');
-            $table->string('contact_number');
+            // ❌ REMOVED: tracking_code (already exists in create migration)
             
-            // ❌ REMOVED: $table->text('purpose'); (Already exists in previous migration)
+            // Add only the NEW columns that don't exist in the original table
+            if (!Schema::hasColumn('document_requests', 'category')) {
+                $table->string('category')->default('personal');
+            }
             
-            $table->string('valid_id_path')->nullable();
+            if (!Schema::hasColumn('document_requests', 'business_name')) {
+                $table->string('business_name')->nullable();
+            }
+            
+            if (!Schema::hasColumn('document_requests', 'tin_number')) {
+                $table->string('tin_number')->nullable();
+            }
+            
+            if (!Schema::hasColumn('document_requests', 'civil_status')) {
+                $table->string('civil_status');
+            }
+            
+            if (!Schema::hasColumn('document_requests', 'years_of_residency')) {
+                $table->integer('years_of_residency');
+            }
+            
+            if (!Schema::hasColumn('document_requests', 'contact_number')) {
+                $table->string('contact_number');
+            }
+            
+            if (!Schema::hasColumn('document_requests', 'valid_id_path')) {
+                $table->string('valid_id_path')->nullable();
+            }
         });
     }
 
     public function down()
     {
         Schema::table('document_requests', function (Blueprint $table) {
-            $table->dropColumn([
-                'tracking_code',
+            // Only drop columns that this migration added (NOT tracking_code)
+            $columns = [
                 'category', 
                 'business_name', 
                 'tin_number', 
@@ -36,7 +54,13 @@ return new class extends Migration
                 'years_of_residency', 
                 'contact_number', 
                 'valid_id_path'
-            ]);
+            ];
+            
+            foreach ($columns as $column) {
+                if (Schema::hasColumn('document_requests', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
 };
