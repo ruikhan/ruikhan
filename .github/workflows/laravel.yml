@@ -2,8 +2,7 @@ name: Laravel CI/CD
 
 on:
   push:
-    # Use 'main' as the primary branch, and include 'master' if it's still in use
-    branches: [ "main", "master" ] 
+    branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
 
@@ -14,51 +13,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. Setup PHP 8.2 (Using the modern version from the 'main' side)
+      # 1. Setup PHP 8.2
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2" # Recommended current version
+          php-version: "8.2"
           extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, fileinfo
           coverage: none
 
-      # 2. Setup Node.js (Essential for modern Laravel/Vite projects)
+      # 2. Setup Node.js
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: "18" # Stable Node version
+          node-version: "18"
 
       # 3. Copy .env file
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
-      # 4. Disable Security Blocking (Keep this if it was necessary, otherwise remove)
-      - name: Disable Security Blocking
-        run: composer config audit.ignore.PKSA-8qx3-n5y5-vvnd true || true
+      # --- REMOVED THE FAULTY "DISABLE SECURITY BLOCKING" STEP HERE ---
 
-      # 5. Install Dependencies (Composer)
+      # 4. Install Dependencies (Composer)
       - name: Install Composer Dependencies
         run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist --ignore-platform-reqs
 
-      # 6. Install NPM & Build Vite Assets
+      # 5. Install NPM & Build Vite Assets
       - name: Install NPM & Build Vite
         run: |
           npm install
           npm run build
 
-      # 7. Generate key & Set Permissions
+      # 6. Generate key & Set Permissions
       - name: Configure Application
         run: |
           php artisan key:generate
           chmod -R 777 storage bootstrap/cache
 
-      # 8. Create SQLite Test Database
+      # 7. Create SQLite Test Database
       - name: Create Database
         run: |
           mkdir -p database
           touch database/database.sqlite
 
-      # 9. Execute Tests (Use the SQLite connection we configured)
+      # 8. Execute Tests
       - name: Execute tests (Unit and Feature tests)
         env:
           DB_CONNECTION: sqlite
