@@ -17,6 +17,12 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
+    // ✅ ADMIN REGISTRATION ROUTES
+    Route::get('register/admin', [RegisteredUserController::class, 'createAdmin'])
+                ->name('register.admin');
+
+    Route::post('register/admin', [RegisteredUserController::class, 'storeAdmin']);
+
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
                 ->name('login');
 
