@@ -94,7 +94,10 @@ class User extends Authenticatable
     | Helper Methods
     |--------------------------------------------------------------------------
     */
-
+ public function receivesBroadcastNotificationsOn()
+    {
+        return 'App.Models.User.' . $this->id;
+    }
     /**
      * Check if the user has a business profile
      */
@@ -169,4 +172,6 @@ class User extends Authenticatable
     {
         return $this->currentSubscriptionTier() === $tier;
     }
+
+    
 }

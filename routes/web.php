@@ -1,7 +1,10 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MarketPriceController;
 use App\Http\Controllers\EstablishmentController;
 use App\Http\Controllers\BookingController;
@@ -10,13 +13,11 @@ use App\Http\Controllers\DocumentRequestController;
 use App\Models\DocumentRequest;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ConcernController;
 use Inertia\Inertia;
 use App\Http\Controllers\JobPostingController;
 use App\Http\Controllers\BillPaymentController;
-use App\Http\Controllers\AdminDocumentController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\EnvironmentController;
@@ -27,6 +28,11 @@ use App\Http\Controllers\BusinessDashboardController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\NotificationController; // ✅ ADD THIS
+
+// ✅ FIXED: Import the Admin Middleware here so we don't rely on the alias
+use App\Http\Middleware\AdminMiddleware; 
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -48,39 +54,65 @@ Route::get('/onboarding', function () {
     return Inertia::render('Documentation/ProjectBlueprint'); 
 })->middleware(['auth', 'verified'])->name('onboarding');
 
-// ✅ DASHBOARD: The actual Command Center (accessed after accepting terms)
+// ✅ DASHBOARD: The actual Command Center
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+
+// ✅ ADMIN ROUTES (Fixed: Uses Class Reference instead of 'admin' alias)
+Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
+    
+    // Command Center
+    Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
+
+    // Document Management
+    Route::get('/documents', [AdminDocumentController::class, 'index'])->name('documents.index');
+    Route::get('/documents/{id}', [AdminDocumentController::class, 'show'])->name('documents.show');
+    Route::patch('/documents/{id}', [AdminDocumentController::class, 'update'])->name('documents.update');
+    
+    // Analytics
+    Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
+});
+
+
+// ✅ AUTHENTICATED CITIZEN ROUTES
 Route::middleware('auth')->group(function () {
+    
+    // ✅ NOTIFICATION API ROUTES (Session-based auth)
+    Route::prefix('api')->name('api.')->group(function () {
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    });
+    
+    // Profile Management
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
+    // --- EMERGENCY ---
+    Route::get('/emergency', [EmergencyController::class, 'index'])->name('emergency.index'); 
+    Route::post('/emergency', [EmergencyController::class, 'store'])->name('emergency.store');
+
+    // --- POLLS ---
     Route::get('/polls', [PollController::class, 'index'])->name('polls.index');
     Route::post('/polls/vote', [PollController::class, 'vote'])->name('polls.vote');
     Route::post('/polls/create', [PollController::class, 'store'])->name('polls.store');
 
+    // --- ISSUES ---
     Route::post('/issues', [IssueController::class, 'store'])->name('issues.store');
 
+    // --- HEALTH ---
     Route::get('/health', [HealthController::class, 'index'])->name('health.index');
     Route::post('/health/book', [HealthController::class, 'store'])->name('health.store');
     
-    Route::get('/system-documentation', function () {
-        return Inertia::render('System/SystemVisualization');
-    })->name('system.docs');
+    // --- DOCUMENTATION ---
+    Route::get('/system-documentation', function () { return Inertia::render('System/SystemVisualization'); })->name('system.docs');
+    Route::get('/system-architecture', function () { return Inertia::render('Documentation/SystemArchitecture'); })->name('system.architecture');
+    Route::get('/project-blueprint', function () { return Inertia::render('Documentation/ProjectBlueprint'); })->name('project.blueprint');
 
-    // --- DOCUMENTATION ROUTES ---
-    Route::get('/system-architecture', function () {
-        return Inertia::render('Documentation/SystemArchitecture');
-    })->name('system.architecture');
-
-    Route::get('/project-blueprint', function () {
-        return Inertia::render('Documentation/ProjectBlueprint');
-    })->name('project.blueprint');
-
-    // --- MARKET PRICES ROUTES ---
+    // --- MARKET PRICES ---
     Route::get('/market-prices', [MarketPriceController::class, 'index'])->name('market.index');
     Route::post('/market-prices', [MarketPriceController::class, 'store'])->name('market.store');
     Route::put('/market-prices/{id}', [MarketPriceController::class, 'update'])->name('market.update');
@@ -88,17 +120,32 @@ Route::middleware('auth')->group(function () {
     Route::get('/establishments', [EstablishmentController::class, 'index'])->name('establishments.index');
     Route::post('/establishments', [EstablishmentController::class, 'store'])->name('establishments.store');
 
-    // --- DOCUMENTS SECTION ---
-    Route::get('/documents', [DocumentRequestController::class, 'index'])->name('documents.index');
-    Route::get('/documents/create', [DocumentRequestController::class, 'create'])->name('documents.create');
-    Route::post('/documents', [DocumentRequestController::class, 'store'])->name('documents.store');
+    // --- SMART LGU SERVICES (Dynamic Forms) ---
+    Route::get('/services', function() { return Inertia::render('Services/Landing'); })->name('services.landing');
+    Route::get('/services/history', [DocumentRequestController::class, 'index'])->name('services.index');
+    Route::get('/services/apply/{department}', [DocumentRequestController::class, 'create'])->name('services.create');
+    Route::post('/services/submit', [DocumentRequestController::class, 'store'])->name('services.store');
+    Route::resource('request', DocumentRequestController::class);
 
-    Route::get('/concerns/report', [ConcernController::class, 'create'])->name('concerns.create');
-    Route::post('/concerns', [ConcernController::class, 'store'])->name('concerns.store');
+    Route::get('/my-request/{id}/journey', [DocumentRequestController::class, 'storyboard'])
+         ->name('request.story');
+    
+         // ---PROPOSAL ---
+         Route::get('/simulation', function () {
+    return Inertia::render('WorkflowSimulator');
+    })->name('simulation');
+             Route::get('/proposal', function () {
+    return Inertia::render('Proposal');
+    })->name('proposal');
+             Route::get('/training', function () {
+    return Inertia::render('TrainingAssessment');
+    })->name('training');
+                 Route::get('/prototype', function () {
+    return Inertia::render('Prototype');
+    })->name('prototype');
 
-    Route::get('/emergency', [EmergencyController::class, 'index'])->name('emergency.index');
-    Route::post('/emergency/sos', [EmergencyController::class, 'store'])->name('emergency.store');
 
+    // --- JOBS ---
     Route::get('/jobs', [JobPostingController::class, 'index'])->name('jobs.index');
 
     // --- ENVIRONMENT (Green Guard) ---
@@ -116,37 +163,20 @@ Route::middleware('auth')->group(function () {
     Route::post('/bills', [BillPaymentController::class, 'store'])->name('bills.store');
     Route::get('/bills/history', [BillPaymentController::class, 'index'])->name('bills.index');
 
-    // --- MARKETPLACE (PUBLIC ACCESS FOR ALL AUTHENTICATED USERS) ---
-    // Browse all businesses
-    Route::get('/marketplace', [MarketplaceController::class, 'index'])
-        ->name('marketplace.index');
+    // --- MARKETPLACE ---
+    Route::get('/marketplace', [MarketplaceController::class, 'index'])->name('marketplace.index');
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
     Route::delete('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
-    // View individual business details
-    Route::get('/marketplace/{id}', [MarketplaceController::class, 'show'])
-        ->name('marketplace.show');
-    
-    // Like/Unlike a business
-    Route::post('/marketplace/{id}/like', [MarketplaceController::class, 'toggleLike'])
-        ->name('marketplace.like');
-    
-    // Submit a review
-    Route::post('/marketplace/{id}/review', [MarketplaceController::class, 'submitReview'])
-        ->name('marketplace.review');
+    Route::get('/marketplace/{id}', [MarketplaceController::class, 'show'])->name('marketplace.show');
+    Route::post('/marketplace/{id}/like', [MarketplaceController::class, 'toggleLike'])->name('marketplace.like');
+    Route::post('/marketplace/{id}/review', [MarketplaceController::class, 'submitReview'])->name('marketplace.review');
 
     // --- RESTRICTED ROUTES (Business Owners Only) ---
+    // Note: Ensure you have a 'business' alias in bootstrap/app.php or use the class here too
     Route::middleware('business')->group(function () {
         Route::get('/jobs/create', [JobPostingController::class, 'create'])->name('jobs.create');
         Route::post('/jobs', [JobPostingController::class, 'store'])->name('jobs.store');
-    });
-
-    // --- ADMIN OFFICIALS AREA ---
-    Route::prefix('admin')->middleware('admin')->group(function () {
-        Route::get('/documents', [AdminDocumentController::class, 'index'])->name('admin.documents.index');
-        Route::patch('/documents/{id}', [AdminDocumentController::class, 'update'])->name('admin.documents.update');
-        Route::get('/documents/{id}', [AdminDocumentController::class, 'show'])->name('admin.documents.show');
-        Route::get('/analytics', [AnalyticsController::class, 'index'])->name('admin.analytics');
     });
 
     // --- PUBLIC VERIFICATION ROUTE ---
@@ -154,50 +184,32 @@ Route::middleware('auth')->group(function () {
         $document = DocumentRequest::with('user')->findOrFail($id);
         
         if($document->status !== 'completed') {
-            abort(404, 'Document not found or not yet issued.');
+            abort(404, 'Document not valid or not yet issued.');
         }
-
-        $qrCode = QrCode::size(200)->generate(route('documents.verify', $id));
 
         return Inertia::render('Documents/Verify', [
             'document' => $document,
-            'qrCode' => $qrCode 
         ]);
     })->name('documents.verify');
 
     // --- BUSINESS INCUBATION MODULE ---
     
-    // 🔹 Registration Portal (Protected: Only residents without active business)
+    // 🔹 Registration Portal
+    // Note: Ensure 'can.register.business' alias exists in bootstrap/app.php
     Route::middleware('can.register.business')->group(function () {
-        Route::get('/business/register', [BusinessRegistrationController::class, 'create'])
-            ->name('business.register');
-        
-        Route::post('/business/register', [BusinessRegistrationController::class, 'store'])
-            ->name('business.store');
+        Route::get('/business/register', [BusinessRegistrationController::class, 'create'])->name('business.register');
+        Route::post('/business/register', [BusinessRegistrationController::class, 'store'])->name('business.store');
     });
 
-    // 🔹 Business Owner Dashboard & Management (Protected: Must have active business + subscription)
+    // 🔹 Business Owner Dashboard & Management
+    // Note: Ensure 'has.business' alias exists in bootstrap/app.php
     Route::middleware('has.business')->prefix('business')->name('business.')->group(function () {
-        // Main Dashboard
-        Route::get('/dashboard', [BusinessDashboardController::class, 'index'])
-            ->name('dashboard');
+        Route::get('/dashboard', [BusinessDashboardController::class, 'index'])->name('dashboard');
+        Route::patch('/status', [BusinessDashboardController::class, 'updateStatus'])->name('update-status');
+        Route::patch('/update', [BusinessDashboardController::class, 'update'])->name('update');
         
-        // Update Business Status (Available, Open, Closed, Full)
-        Route::patch('/status', [BusinessDashboardController::class, 'updateStatus'])
-            ->name('update-status');
-        
-        // Update Business Information
-        Route::patch('/update', [BusinessDashboardController::class, 'update'])
-            ->name('update');
-        
-
-            Route::resource('products', ProductController::class);
-            Route::patch('/products/{product}/toggle', [ProductController::class, 'toggleAvailability'])->name('products.toggle');
-
-        Route::get('/inventory', [BusinessInventoryController::class, 'index'])->name('inventory');
-        Route::get('/orders', [BusinessOrderController::class, 'index'])->name('orders');
-        Route::get('/reviews', [BusinessReviewController::class, 'index'])->name('reviews');
-        Route::get('/analytics', [BusinessAnalyticsController::class, 'index'])->name('analytics');
+        Route::resource('products', ProductController::class);
+        Route::patch('/products/{product}/toggle', [ProductController::class, 'toggleAvailability'])->name('products.toggle');
     });
 });
 

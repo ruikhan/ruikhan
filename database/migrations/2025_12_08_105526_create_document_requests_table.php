@@ -15,17 +15,28 @@ public function up()
 {
     Schema::create('document_requests', function (Blueprint $table) {
         $table->id();
-        // Link request to a specific resident (User)
+        
+        // 1. Who is asking?
         $table->foreignId('user_id')->constrained()->onDelete('cascade'); 
         
-        $table->string('document_type'); // e.g., 'Barangay Clearance'
-        $table->text('purpose');         // Reason for request
+        // 2. Tracking & Identification
+        $table->string('tracking_code')->unique(); // e.g., 'MCR-2025-8821'
+        $table->string('department');              // e.g., 'Civil Registrar', 'Health Office'
+        $table->string('service_type');            // e.g., 'Birth Certificate', 'Business Permit'
         
-        // Status tracking
+        // 3. The Magic Column (Stores all specific form fields)
+        // This will hold Name, Father's Name, Farm Size, TIN, etc.
+        $table->json('data'); 
+        
+        // 4. File Uploads (Stores paths to IDs, Plans, Sketch maps)
+        $table->json('attachments')->nullable(); 
+
+        // 5. Status & Admin Info
         $table->enum('status', ['pending', 'processing', 'ready_for_pickup', 'completed', 'rejected'])->default('pending');
-        
-        $table->text('admin_note')->nullable(); // Admin feedback (optional)
-        $table->timestamps(); // Tracks created_at and updated_at
+        $table->text('admin_remarks')->nullable(); // Reason for rejection or pickup instructions
+        $table->timestamp('appointment_date')->nullable(); // For scheduled inspections or interviews
+
+        $table->timestamps();
     });
 }
 

@@ -66,10 +66,13 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         
+        // ✅ THIS WAS MISSING. Add this line:
+        'admin' => \App\Http\Middleware\AdminMiddleware::class,
+
         // ✅ EXISTING BUSINESS MIDDLEWARE
         'business' => \App\Http\Middleware\EnsureUserIsBusiness::class,
         
-        // ✅ NEW BUSINESS MODULE MIDDLEWARE (Added)
+        // ✅ NEW BUSINESS MODULE MIDDLEWARE
         'has.business' => \App\Http\Middleware\HasBusiness::class,
         'can.register.business' => \App\Http\Middleware\CanRegisterBusiness::class,
     ];

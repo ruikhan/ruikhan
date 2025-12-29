@@ -2,7 +2,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ requests: Array });
+// ✅ FIX: Add default value to prevent "undefined" crash
+const props = defineProps({ 
+    requests: {
+        type: Array,
+        default: () => [] 
+    }
+});
 
 const form = useForm({
     status: '',
@@ -45,11 +51,11 @@ const updateStatus = (id, newStatus) => {
                     
                     <div class="hidden md:flex gap-4">
                         <div class="px-4 py-2 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
-                            <span class="block text-2xl font-bold text-yellow-400 leading-none">{{ requests.filter(r => r.status === 'pending').length }}</span>
+                            <span class="block text-2xl font-bold text-yellow-400 leading-none">{{ requests?.filter(r => r.status === 'pending').length || 0 }}</span>
                             <span class="text-[10px] text-slate-400 uppercase tracking-wider">Pending</span>
                         </div>
                         <div class="px-4 py-2 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
-                            <span class="block text-2xl font-bold text-green-400 leading-none">{{ requests.filter(r => r.status === 'ready_for_pickup').length }}</span>
+                             <span class="block text-2xl font-bold text-green-400 leading-none">{{ requests?.filter(r => r.status === 'ready_for_pickup').length || 0 }}</span>
                             <span class="text-[10px] text-slate-400 uppercase tracking-wider">Ready</span>
                         </div>
                     </div>
@@ -94,11 +100,11 @@ const updateStatus = (id, newStatus) => {
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center">
                                                 <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs mr-3 shadow-lg shadow-indigo-500/20">
-                                                    {{ req.user.name.charAt(0) }}
+                                                    {{ req.user?.name?.charAt(0) || '?' }}
                                                 </div>
                                                 <div>
-                                                    <div class="font-bold text-white">{{ req.user.name }}</div>
-                                                    <div class="text-xs text-slate-500">{{ req.user.email }}</div>
+                                                    <div class="font-bold text-white">{{ req.user?.name || 'Unknown User' }}</div>
+                                                    <div class="text-xs text-slate-500">{{ req.user?.email || 'No Email' }}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -126,16 +132,17 @@ const updateStatus = (id, newStatus) => {
                                         </td>
 
                                         <td class="px-6 py-4 whitespace-nowrap text-right">
-                                        <Link 
-                                            :href="route('admin.documents.show', req.id)" 
-                                            class="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-blue-300 transition-all hover:text-blue-200 group/btn"
-                                        >
-                                            <span>View Dossier</span>
-                                            <svg class="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                            </svg>
-                                        </Link>
-                                    </td>
+                                            <Link 
+                                                v-if="req.id"
+                                                :href="route('admin.documents.show', req.id)" 
+                                                class="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-blue-300 transition-all hover:text-blue-200 group/btn"
+                                            >
+                                                <span>View Dossier</span>
+                                                <svg class="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                                </svg>
+                                            </Link>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
