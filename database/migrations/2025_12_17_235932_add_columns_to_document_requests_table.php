@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('document_requests', function (Blueprint $table) {
             // Check for attachments column before adding
             if (!Schema::hasColumn('document_requests', 'attachments')) {
-                $table->string('attachments')->nullable()->after('data');
+                $table->string('attachments')->nullable(); // REMOVED ->after('data')
             }
 
             // Admin remarks
@@ -20,8 +20,13 @@ return new class extends Migration
             }
             
             // Appointment date
-            if (!Schema::hasColumn('document_requests', 'appointment_date')) {
+            if (!Schema::hasColumn('document_requests', 'admin_remarks')) {
                 $table->dateTime('appointment_date')->nullable()->after('admin_remarks');
+            } else {
+                // If admin_remarks already exists, just add appointment_date without after clause
+                if (!Schema::hasColumn('document_requests', 'appointment_date')) {
+                    $table->dateTime('appointment_date')->nullable();
+                }
             }
         });
     }
