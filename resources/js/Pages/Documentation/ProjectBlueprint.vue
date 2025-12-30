@@ -17,7 +17,7 @@ const sections = [
     { id: 'solution', label: 'Solution', icon: '◇' },
     { id: 'modules', label: 'Modules', icon: '□' },
     { id: 'features', label: 'Features', icon: '⬡' },
-    { id: 'impact', label: 'Impact', icon: '⬢' }
+    { id: 'terms', label: 'Terms', icon: '⬢' }
 ];
 
 const modules = [

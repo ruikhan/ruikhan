@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DocumentRequest;
+use App\Services\ProfileService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
@@ -11,6 +12,13 @@ use Illuminate\Support\Facades\Storage;
 
 class DocumentRequestController extends Controller
 {
+    protected $profileService;
+
+    public function __construct(ProfileService $profileService)
+    {
+        $this->profileService = $profileService;
+    }
+
     // =========================================================================
     // 1. RESIDENT VIEW: My History & Dashboard
     // =========================================================================
@@ -25,20 +33,14 @@ class DocumentRequestController extends Controller
         ]);
     }
 
-    /** * ✅ ADDED: THE STORYBOARD VIEWER
-     * Visualizes the request journey (The "Graphic Novel" view)
-     */
     public function storyboard($id)
     {
-        // 1. Find the request or fail
         $request = DocumentRequest::findOrFail($id);
 
-        // 2. Security Check: Prevent users from seeing others' requests
         if ($request->user_id !== auth()->id()) {
             abort(403, 'ACCESS DENIED: You do not have permission to view this dossier.');
         }
 
-        // 3. Render the Cinematic Page
         return Inertia::render('User/RequestStory', [
             'docRequest' => $request
         ]);
@@ -53,11 +55,7 @@ class DocumentRequestController extends Controller
             return redirect()->route('services.index'); 
         }
 
-        // This Configuration Map defines the "Shape" of every request.
-        // It tells the Frontend what fields to render.
         $specs = $this->getServiceSpecifications();
-
-        // Retrieve config or use a Default Fallback if department not found
         $config = $specs[$department] ?? [
             'title' => $department . ' Request',
             'description' => 'General request form.',
@@ -68,60 +66,170 @@ class DocumentRequestController extends Controller
             ]
         ];
 
+        // ✅ IMPROVED: Use ProfileService for cleaner logic
+        $existingProfile = null;
+        $isReturningUser = false;
+        $profileStatus = null;
+
+        if ($department === 'Barangay Certifications') {
+            $userId = auth()->id();
+            
+            // Check if user has profile
+            $isReturningUser = $this->profileService->hasProfile($userId);
+            
+            if ($isReturningUser) {
+                // Get profile data for form
+                $existingProfile = $this->profileService->getProfileForForm($userId);
+                
+                // Get profile status (needs attention?)
+                $profileStatus = $this->profileService->needsAttention($userId);
+            }
+        }
+
         return Inertia::render('Services/Create', [
             'departmentKey' => $department,
-            'config' => $config
+            'config' => $config,
+            'isReturningUser' => $isReturningUser,
+            'existingProfile' => $existingProfile,
+            'profileStatus' => $profileStatus
         ]); 
     }
 
     // =========================================================================
     // 3. THE HANDLER: Storing Dynamic Data
     // =========================================================================
-    public function store(Request $request)
+public function store(Request $request)
+{
+    $request->validate([
+        'department' => 'required|string',
+        'document_type' => 'required|string',
+        'data' => 'required|array',
+        'remarks' => 'nullable|string',
+        'attachments' => 'nullable|array',
+        'attachments.*' => 'file|max:10240',
+        'use_existing_profile' => 'nullable|boolean',
+        'signature_data' => 'nullable|string',
+    ]);
+
+    $user = $request->user();
+    $attachmentsPaths = [];
+    $formData = $request->data;
+    $isQuickSubmit = $request->use_existing_profile ?? false;
+
+    // ✅ IMPROVED: Use ProfileService to handle profile logic
+    if ($request->department === 'Barangay Certifications') {
+        if ($isQuickSubmit) {
+            // Merge stored profile with new request-specific data
+            $formData = $this->profileService->mergeProfileWithRequest($user->id, $formData);
+        } else {
+            // Create or update profile from full form submission
+            $this->profileService->createOrUpdateProfile($user->id, $formData, false);
+        }
+    }
+
+    // Handle file uploads
+    if ($request->hasFile('attachments')) {
+        foreach ($request->file('attachments') as $file) {
+            $attachmentsPaths[] = $file->store('documents/' . $user->id, 'public');
+        }
+    }
+
+    // Store signature if provided
+    if ($request->signature_data) {
+        $formData['signature'] = $request->signature_data;
+        $formData['signature_timestamp'] = now()->toDateTimeString();
+        $formData['submission_method'] = 'quick_submit';
+    } else {
+        $formData['submission_method'] = 'full_form';
+    }
+
+    // Generate Smart Tracking Code
+    $deptPrefix = $this->getDepartmentPrefix($request->department);
+    $trackingCode = $deptPrefix . '-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4));
+
+    // ✅ FIXED: Convert empty array to null for cleaner database
+    $newRequest = DocumentRequest::create([
+        'user_id' => $user->id,
+        'tracking_code' => $trackingCode,
+        'department' => $request->department,
+        'document_type' => $request->document_type, 
+        'data' => $formData,
+        'attachments' => !empty($attachmentsPaths) ? $attachmentsPaths : null,  // ✅ FIXED
+        'status' => 'pending',
+        'user_remarks' => $request->remarks, 
+    ]);
+
+    // Mark profile as used (if quick submit)
+    if ($isQuickSubmit && $request->department === 'Barangay Certifications') {
+        $this->profileService->getProfile($user->id)?->markAsUsed();
+    }
+
+    return redirect()->route('request.story', $newRequest->id)
+        ->with('success', 'Application submitted! Tracking initialized.');
+}
+
+    // =========================================================================
+    // 4. PROFILE MANAGEMENT ENDPOINTS
+    // =========================================================================
+    
+    /**
+     * Show user's barangay profile
+     */
+    public function showProfile()
     {
-        // 1. Validate the Base Fields
+        $userId = auth()->id();
+        $profile = $this->profileService->getProfile($userId);
+        $profileStatus = $this->profileService->needsAttention($userId);
+        $statistics = $this->profileService->getStatistics($userId);
+
+        return Inertia::render('Profile/BarangayProfile', [
+            'profile' => $profile,
+            'profileStatus' => $profileStatus,
+            'statistics' => $statistics
+        ]);
+    }
+
+    /**
+     * Update user's barangay profile
+     */
+    public function updateProfile(Request $request)
+    {
         $request->validate([
-            'department' => 'required|string',
-            'document_type' => 'required|string',
-            'data' => 'required|array',
-            'remarks' => 'nullable|string',
-            'attachments' => 'nullable|file|max:10240',
+            'applicant_last_name' => 'required|string|max:255',
+            'applicant_first_name' => 'required|string|max:255',
+            'applicant_middle_name' => 'nullable|string|max:255',
+            'date_of_birth' => 'required|date',
+            'age' => 'required|integer|min:1|max:150',
+            'sex' => 'required|in:Male,Female',
+            'civil_status' => 'required|in:Single,Married,Widowed,Separated',
+            'barangay' => 'required|string|max:255',
+            'municipality' => 'required|string|max:255',
+            'province' => 'required|string|max:255',
         ]);
 
-        $user = $request->user();
-        $attachmentsPath = null;
+        $userId = auth()->id();
+        $profile = $this->profileService->createOrUpdateProfile($userId, $request->all(), false);
 
-        // 2. Handle File Upload
-        if ($request->hasFile('attachments')) {
-            $attachmentsPath = $request->file('attachments')->store('documents/' . $user->id, 'public');
+        return redirect()->back()->with('success', 'Profile updated successfully!');
+    }
+
+    /**
+     * Delete user's barangay profile
+     */
+    public function deleteProfile()
+    {
+        $userId = auth()->id();
+        $deleted = $this->profileService->deleteProfile($userId);
+
+        if ($deleted) {
+            return redirect()->back()->with('success', 'Profile deleted successfully.');
         }
 
-        // 3. Generate Smart Tracking Code
-        $deptPrefix = $this->getDepartmentPrefix($request->department);
-        $trackingCode = $deptPrefix . '-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4));
-
-        // 4. Create the Record
-        $newRequest = DocumentRequest::create([
-            'user_id' => $user->id,
-            'tracking_code' => $trackingCode,
-            'department' => $request->department,
-            'document_type' => $request->document_type, 
-            'data' => $request->data,
-            'attachments' => $attachmentsPath, 
-            'status' => 'pending',
-            'user_remarks' => $request->remarks, 
-        ]);
-
-        // 5. Fire Event (Sends Email/Notification to Admin)
-        // event(new NewDocumentRequest($newRequest));
-
-        // 6. Redirect with Success
-        return redirect()->route('request.story', $newRequest->id)
-            ->with('success', 'Application submitted! Tracking initialized.');
+        return redirect()->back()->with('error', 'Failed to delete profile.');
     }
 
     // =========================================================================
-    // 4. HELPERS
+    // HELPER METHODS
     // =========================================================================
 
     private function getDepartmentPrefix($dept) {
@@ -141,13 +249,9 @@ class DocumentRequestController extends Controller
         return $map[$dept] ?? 'REQ';
     }
 
-    // Helper to get common barangay fields (used across all certificate types)
     private function getCommonBarangayFields() {
         return [
-            // Request Level
             ['name' => 'request_level', 'label' => 'Request Level', 'type' => 'select', 'options' => ['Municipal LGU', 'Barangay']],
-            
-            // Personal Information
             ['name' => 'applicant_last_name', 'label' => 'Last Name', 'type' => 'text'],
             ['name' => 'applicant_first_name', 'label' => 'First Name', 'type' => 'text'],
             ['name' => 'applicant_middle_name', 'label' => 'Middle Name / Initial', 'type' => 'text'],
@@ -155,8 +259,6 @@ class DocumentRequestController extends Controller
             ['name' => 'age', 'label' => 'Age', 'type' => 'number'],
             ['name' => 'sex', 'label' => 'Sex', 'type' => 'select', 'options' => ['Male', 'Female']],
             ['name' => 'civil_status', 'label' => 'Civil Status', 'type' => 'select', 'options' => ['Single', 'Married', 'Widowed', 'Separated']],
-            
-            // Complete Address
             ['name' => 'purok_street', 'label' => 'Purok / Street', 'type' => 'text'],
             ['name' => 'barangay', 'label' => 'Barangay', 'type' => 'text'],
             ['name' => 'municipality', 'label' => 'City/Municipality', 'type' => 'text'],
@@ -166,8 +268,8 @@ class DocumentRequestController extends Controller
 
     // Extracted the massive array to a function to keep the controller clean
     private function getServiceSpecifications() {
+        // ... (keep all existing department configurations)
         return [
-            // 1. CIVIL REGISTRAR
             'Municipal Civil Registrar' => [
                 'title' => 'Civil Registrar Services',
                 'description' => 'Request Birth, Marriage, or Death Certificates.',
@@ -344,14 +446,11 @@ class DocumentRequestController extends Controller
                     'Certificate of Good Moral Character',
                     'Certificate of No Pending Case'
                 ],
-                // Dynamic fields based on certificate type
                 'type_specific_fields' => [
                     'Certificate of Residency' => array_merge($this->getCommonBarangayFields(), [
                         ['name' => 'place_of_birth', 'label' => 'Place of Birth', 'type' => 'text'],
                         ['name' => 'residency_duration', 'label' => 'Duration of Residency (Years/Months)', 'type' => 'text'],
-                        ['name' => 'purpose', 'label' => 'Purpose of Certificate', 'type' => 'select', 'options' => [
-                            'Job Application', 'School Enrollment', 'Bank Transaction', 'Government ID', 'Other'
-                        ]],
+                        ['name' => 'purpose', 'label' => 'Purpose of Certificate', 'type' => 'select', 'options' => ['Job Application', 'School Enrollment', 'Bank Transaction', 'Government ID', 'Other']],
                         ['name' => 'purpose_other', 'label' => 'If Other, please specify', 'type' => 'text'],
                         ['name' => 'recipient_office', 'label' => 'Recipient Office/Organization', 'type' => 'text'],
                         ['name' => 'valid_id_type', 'label' => 'Valid ID Presented', 'type' => 'select', 'options' => ['PhilID', 'Driver’s License', 'Passport', 'Voter’s ID', 'SSS/GSIS ID', 'PRC ID', 'Postal ID', 'Other']],
