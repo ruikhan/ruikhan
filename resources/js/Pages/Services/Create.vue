@@ -1,27 +1,34 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
     departmentKey: String,
     config: Object,
-    isReturningUser: Boolean,      // ✅ NEW
-    existingProfile: Object         // ✅ NEW
+    isReturningUser: Boolean,
+    existingProfile: Object,
+    selectedBarangay: String
 });
 
-// Track selected document type separately
 const selectedDocType = ref(props.config.types[0]);
 const currentStep = ref(1);
 const formErrors = ref({});
+const isPageLoaded = ref(false);
 
-// ✅ NEW: Signature Canvas
+// Signature Canvas
 const signatureCanvas = ref(null);
 const isDrawing = ref(false);
 const hasSignature = ref(false);
 
-// ✅ NEW: User choice for returning users
+// User choice for returning users
 const useQuickSubmit = ref(false);
+
+onMounted(() => {
+    setTimeout(() => {
+        isPageLoaded.value = true;
+    }, 100);
+});
 
 // Computed property to get the current fields based on selected document type
 const currentFields = computed(() => {
@@ -31,13 +38,12 @@ const currentFields = computed(() => {
     return props.config.fields;
 });
 
-// ✅ NEW: Filter fields for returning users (only document-specific fields)
+// Filter fields for returning users (only document-specific fields)
 const documentSpecificFields = computed(() => {
     if (!useQuickSubmit.value || !props.isReturningUser) {
         return [];
     }
     
-    // These are the fields that change per document request
     const specificFieldNames = [
         'purpose', 'purpose_other', 'recipient_office', 
         'occupation', 'income_status', 'monthly_income', 
@@ -55,25 +61,16 @@ const documentSpecificFields = computed(() => {
     );
 });
 
-// Split fields into steps for better UX
-const fieldsStep1 = computed(() => {
-    const fields = currentFields.value;
-    const half = Math.ceil(fields.length / 2);
-    return fields.slice(0, half);
-});
-
-const fieldsStep2 = computed(() => {
-    const fields = currentFields.value;
-    const half = Math.ceil(fields.length / 2);
-    return fields.slice(half);
-});
-
-// Helper function to initialize form data from fields
+// Helper function with barangay pre-fill support
 const initializeFormData = (fields) => {
     const formData = {};
     fields.forEach(field => {
         if (field.type !== 'file') {
-            formData[field.name] = field.type === 'number' ? null : '';
+            if (field.name === 'barangay' && props.selectedBarangay) {
+                formData[field.name] = props.selectedBarangay;
+            } else {
+                formData[field.name] = field.type === 'number' ? null : '';
+            }
         }
     });
     return formData;
@@ -85,30 +82,25 @@ const form = useForm({
     remarks: '',
     attachments: null,
     formData: initializeFormData(currentFields.value),
-    use_existing_profile: false,    // ✅ NEW
-    signature_data: null            // ✅ NEW
+    use_existing_profile: false,
+    signature_data: null
 });
 
-// Watch for document type changes and rebuild form.formData
+// Watch for document type changes
 watch(selectedDocType, (newType) => {
     form.document_type = newType;
-    
     const fieldsForType = props.config.type_specific_fields?.[newType] || props.config.fields;
     form.formData = initializeFormData(fieldsForType);
-    
-    // Reset to step 1 when document type changes
     currentStep.value = 1;
     formErrors.value = {};
     useQuickSubmit.value = false;
     clearSignature();
 });
 
-// ✅ NEW: Watch for quick submit toggle
+// Watch for quick submit toggle
 watch(useQuickSubmit, (newValue) => {
     if (newValue && props.isReturningUser) {
-        // User chose quick submit - mark to use existing profile
         form.use_existing_profile = true;
-        // Clear out personal fields since we'll use stored ones
         const profileFields = [
             'request_level', 'applicant_last_name', 'applicant_first_name', 
             'applicant_middle_name', 'date_of_birth', 'age', 'sex', 
@@ -126,7 +118,7 @@ watch(useQuickSubmit, (newValue) => {
     }
 });
 
-// ✅ NEW: Signature Pad Functions
+// Signature Pad Functions
 const setupSignatureCanvas = () => {
     if (!signatureCanvas.value) return;
     
@@ -192,20 +184,11 @@ const validateStep = (step) => {
             formErrors.value.document_type = 'Please select a document type';
             return false;
         }
-        
-        // ✅ NEW: If returning user chose quick submit, validate choice confirmation
-        if (props.isReturningUser && props.departmentKey === 'Barangay Certifications') {
-            // They must make a choice
-            return true; // Let them proceed to see the form options
-        }
-        
         return true;
     }
     
     if (step === 2) {
-        // ✅ NEW: Different validation for quick submit
         if (useQuickSubmit.value && props.isReturningUser) {
-            // Only validate document-specific fields + signature
             let hasErrors = false;
             
             documentSpecificFields.value.forEach(field => {
@@ -218,7 +201,6 @@ const validateStep = (step) => {
                 }
             });
             
-            // Check signature
             if (!hasSignature.value) {
                 formErrors.value.signature = 'Please provide your signature';
                 hasErrors = true;
@@ -227,7 +209,6 @@ const validateStep = (step) => {
             return !hasErrors;
         }
         
-        // Standard validation for full form
         let hasErrors = false;
         currentFields.value.forEach(field => {
             if (field.type === 'file') return;
@@ -252,10 +233,11 @@ const nextStep = () => {
         currentStep.value = 2;
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
-        // Setup signature canvas if it's a quick submit
-        if (useQuickSubmit.value && props.isReturningUser) {
-            setTimeout(setupSignatureCanvas, 100);
-        }
+        nextTick(() => {
+            if (useQuickSubmit.value && props.isReturningUser) {
+                setupSignatureCanvas();
+            }
+        });
     }
 };
 
@@ -313,7 +295,6 @@ const handleFileInput = (event) => {
         return;
     }
     
-    // Check each file size
     const oversizedFiles = files.filter(file => file.size > 10 * 1024 * 1024);
     if (oversizedFiles.length > 0) {
         alert(`${oversizedFiles.length} file(s) exceed 10MB limit`);
@@ -322,687 +303,867 @@ const handleFileInput = (event) => {
         return;
     }
     
-    form.attachments = files;  // ✅ Array of files
+    form.attachments = files;
 };
 
-const progress = computed(() => (currentStep.value / 2) * 100);
+const renderField = (field, suffix = '') => {
+    const fieldId = field.name + suffix;
+    const hasError = formErrors.value[field.name] || form.errors[`data.${field.name}`];
+    
+    return {
+        id: fieldId,
+        hasError: hasError,
+        errorMessage: formErrors.value[field.name] || form.errors[`data.${field.name}`]
+    };
+};
 </script>
 
 <template>
     <Head :title="config.title" />
 
     <AuthenticatedLayout>
-        <div class="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-            <div class="max-w-3xl mx-auto">
+        <!-- Enhanced Animated Background -->
+        <div class="fixed inset-0 -z-10 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950/20 to-purple-950/20"></div>
+            
+            <!-- Animated orbs -->
+            <div class="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse-slow"></div>
+            <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse-slow" style="animation-delay: 2s;"></div>
+            <div class="absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse-slow" style="animation-delay: 4s;"></div>
+            
+            <!-- Grid pattern -->
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwgMjU1LCAyNTUsIDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
+        </div>
+
+        <div class="min-h-screen py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-4xl mx-auto">
                 
-                <!-- Header -->
-                <div class="text-center mb-6 sm:mb-8 animate-fade-in-up">
-                    <div class="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl sm:rounded-3xl mb-4 shadow-lg shadow-blue-500/20 backdrop-blur-md border border-white/10">
-                        <span class="text-3xl sm:text-4xl">{{ config.icon }}</span>
-                    </div>
-                    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-2">{{ config.title }}</h1>
-                    <p class="text-sm sm:text-base text-gray-400">{{ config.description }}</p>
-                </div>
-
-                <!-- ✅ NEW: Returning User Welcome Banner -->
-                <div v-if="isReturningUser && departmentKey === 'Barangay Certifications' && currentStep === 1" 
-                     class="mb-6 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-2xl p-6 animate-slide-down">
-                    <div class="flex items-start gap-4">
-                        <span class="text-4xl">👋</span>
-                        <div class="flex-1">
-                            <h3 class="text-lg font-bold text-white mb-2">Welcome Back!</h3>
-                            <p class="text-sm text-gray-300 mb-4">
-                                We found your information on file. You can use <strong>Quick Submit</strong> 
-                                to process your request faster - just sign and submit!
-                            </p>
-                            <div class="flex items-center gap-2 text-xs text-green-400">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                </svg>
-                                <span>Your profile is up to date</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="mb-6 sm:mb-8 animate-slide-down">
-                    <div class="flex justify-between items-center mb-3">
-                        <div class="flex items-center flex-1">
-                            <div :class="[
-                                'flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-xs sm:text-sm transition-all duration-300',
-                                currentStep >= 1 
-                                    ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg scale-110' 
-                                    : 'bg-gray-800 text-gray-500 border-2 border-gray-700'
-                            ]">
-                                1
-                            </div>
-                            <div :class="[
-                                'flex-1 h-1 mx-2 sm:mx-3 rounded-full transition-all duration-500',
-                                currentStep > 1 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-800'
-                            ]"></div>
-                        </div>
-                        <div :class="[
-                            'flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-xs sm:text-sm transition-all duration-300',
-                            currentStep >= 2 
-                                ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg scale-110' 
-                                : 'bg-gray-800 text-gray-500 border-2 border-gray-700'
-                        ]">
-                            2
-                        </div>
-                    </div>
-                    <div class="flex justify-between text-[10px] sm:text-xs text-gray-500 font-medium px-1">
-                        <span :class="currentStep >= 1 ? 'text-blue-400' : ''">Document Type</span>
-                        <span :class="currentStep >= 2 ? 'text-blue-400' : ''">
-                            {{ useQuickSubmit && isReturningUser ? 'Sign & Submit' : 'Information' }}
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Form Container -->
-                <div class="bg-gray-900/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
-                    
-                    <!-- Step Indicator -->
-                    <div class="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-b border-white/10 px-4 sm:px-6 py-3 sm:py-4">
-                        <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                            <span class="text-xl sm:text-2xl">
-                                {{ currentStep === 1 ? '📋' : (useQuickSubmit && isReturningUser ? '✍️' : '📝') }}
-                            </span>
-                            {{ currentStep === 1 ? 'Select Document Type' : (useQuickSubmit && isReturningUser ? 'Quick Submit' : 'Required Information') }}
-                        </h2>
-                    </div>
-
-                    <form @submit.prevent="submit" class="p-4 sm:p-6 lg:p-8">
-                        
-                        <!-- Step 1: Document Type Selection -->
-                        <div v-show="currentStep === 1" class="space-y-6 animate-fade-in">
+                <!-- Barangay Badge -->
+                <Transition name="slide-down">
+                    <div v-if="selectedBarangay && departmentKey === 'Barangay Certifications'" 
+                         class="mb-6 group">
+                        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-teal-500/10 border border-teal-500/20 backdrop-blur-xl p-4 sm:p-5 shadow-xl shadow-teal-500/5">
+                            <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-teal-500/20 via-cyan-500/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                             
-                            <!-- Document Type Selector -->
-                            <div class="form-group">
-                                <label class="form-label">
-                                    Type of Document <span class="text-red-400">*</span>
-                                </label>
-                                
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <button
-                                        v-for="type in config.types"
-                                        :key="type"
-                                        type="button"
-                                        @click="selectedDocType = type"
-                                        :class="[
-                                            'flex items-center gap-3 p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-                                            selectedDocType === type
-                                                ? 'bg-blue-500/20 border-blue-500 shadow-lg shadow-blue-500/20'
-                                                : 'bg-gray-800/50 border-gray-700 hover:border-gray-600 active:scale-95'
-                                        ]"
-                                    >
-                                        <div :class="[
-                                            'w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0',
-                                            selectedDocType === type ? 'bg-blue-500/30' : 'bg-gray-700/50'
-                                        ]">
-                                            📄
+                            <div class="relative flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                                    <div class="relative flex-shrink-0">
+                                        <div class="absolute inset-0 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-2xl blur-lg opacity-50 animate-pulse-slow"></div>
+                                        <div class="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-xl sm:text-2xl shadow-xl transform group-hover:scale-110 transition-transform duration-300">
+                                            📍
                                         </div>
-                                        <div class="flex-1 min-w-0">
-                                            <span class="text-sm font-bold text-white block truncate">{{ type }}</span>
-                                            <span class="text-xs text-gray-400">{{ currentFields.length }} fields required</span>
-                                        </div>
-                                        <div v-if="selectedDocType === type" class="flex-shrink-0">
-                                            <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                            </svg>
-                                        </div>
-                                    </button>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs font-bold uppercase tracking-widest text-teal-400 mb-1">Selected Barangay</p>
+                                        <p class="text-lg sm:text-xl font-black text-white truncate">{{ selectedBarangay }}</p>
+                                    </div>
                                 </div>
-                                
-                                <div v-if="formErrors.document_type || form.errors.document_type" class="form-error">
-                                    {{ formErrors.document_type || form.errors.document_type }}
-                                </div>
+                                <Link :href="route('services.landing')" 
+                                      class="group/btn relative px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 hover:border-teal-400/50 transition-all duration-300 overflow-hidden flex-shrink-0">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-teal-400/0 via-teal-400/10 to-teal-400/0 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-700"></div>
+                                    <span class="relative flex items-center gap-2 text-xs font-bold text-teal-400 group-hover/btn:text-teal-300">
+                                        <svg class="w-4 h-4 transform group-hover/btn:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                        </svg>
+                                        <span class="hidden sm:inline">Change</span>
+                                    </span>
+                                </Link>
                             </div>
+                        </div>
+                    </div>
+                </Transition>
 
-                            <!-- ✅ NEW: Submission Method Choice (Returning Users Only) -->
-                            <div v-if="isReturningUser && departmentKey === 'Barangay Certifications' && selectedDocType" 
-                                 class="form-group">
-                                <label class="form-label mb-3">Choose Submission Method</label>
-                                
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <!-- Quick Submit Option -->
-                                    <button
-                                        type="button"
-                                        @click="useQuickSubmit = true"
-                                        :class="[
-                                            'flex flex-col items-start gap-3 p-5 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500',
-                                            useQuickSubmit
-                                                ? 'bg-green-500/20 border-green-500 shadow-lg shadow-green-500/20'
-                                                : 'bg-gray-800/50 border-gray-700 hover:border-gray-600 active:scale-95'
-                                        ]"
-                                    >
-                                        <div class="flex items-center gap-3 w-full">
-                                            <div :class="[
-                                                'w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0',
-                                                useQuickSubmit ? 'bg-green-500/30' : 'bg-gray-700/50'
-                                            ]">
-                                                ⚡
-                                            </div>
-                                            <div class="flex-1">
-                                                <span class="text-sm font-bold text-white block">Quick Submit</span>
-                                                <span class="text-xs text-gray-400">Use saved profile</span>
-                                            </div>
-                                            <div v-if="useQuickSubmit" class="flex-shrink-0">
-                                                <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <p class="text-xs text-gray-400 pl-15">
-                                            ✓ Uses your saved information<br>
-                                            ✓ Just add purpose & sign<br>
-                                            ✓ 2x faster processing
-                                        </p>
-                                    </button>
-
-                                    <!-- Full Form Option -->
-                                    <button
-                                        type="button"
-                                        @click="useQuickSubmit = false"
-                                        :class="[
-                                            'flex flex-col items-start gap-3 p-5 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-                                            !useQuickSubmit
-                                                ? 'bg-blue-500/20 border-blue-500 shadow-lg shadow-blue-500/20'
-                                                : 'bg-gray-800/50 border-gray-700 hover:border-gray-600 active:scale-95'
-                                        ]"
-                                    >
-                                        <div class="flex items-center gap-3 w-full">
-                                            <div :class="[
-                                                'w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0',
-                                                !useQuickSubmit ? 'bg-blue-500/30' : 'bg-gray-700/50'
-                                            ]">
-                                                📝
-                                            </div>
-                                            <div class="flex-1">
-                                                <span class="text-sm font-bold text-white block">Complete Form</span>
-                                                <span class="text-xs text-gray-400">Fill all fields</span>
-                                            </div>
-                                            <div v-if="!useQuickSubmit" class="flex-shrink-0">
-                                                <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <p class="text-xs text-gray-400 pl-15">
-                                            ✓ Update your information<br>
-                                            ✓ Add new details<br>
-                                            ✓ Full control over data
-                                        </p>
-                                    </button>
-                                </div>
+                <!-- Header Section -->
+                <Transition name="fade-up">
+                    <div v-if="isPageLoaded" class="text-center mb-6 sm:mb-8 lg:mb-12">
+                        <div class="relative inline-block mb-4 sm:mb-6">
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-3xl blur-2xl animate-pulse-slow"></div>
+                            <div class="relative w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-xl rounded-3xl flex items-center justify-center border border-white/10 shadow-2xl transform hover:scale-110 transition-transform duration-500">
+                                <span class="text-3xl sm:text-4xl lg:text-5xl animate-float">{{ config.icon }}</span>
                             </div>
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 mb-2 sm:mb-3 animate-gradient-x px-4">
+                            {{ config.title }}
+                        </h1>
+                        <p class="text-sm sm:text-base lg:text-lg text-slate-400 max-w-2xl mx-auto px-4">{{ config.description }}</p>
+                    </div>
+                </Transition>
 
-                            <!-- Info Box -->
-                            <div v-if="selectedDocType" class="bg-blue-500/10 border border-blue-500/30 rounded-xl sm:rounded-2xl p-4 flex items-start gap-3">
-                                <span class="text-xl sm:text-2xl flex-shrink-0">ℹ️</span>
+                <!-- Returning User Banner -->
+                <Transition name="slide-down">
+                    <div v-if="isReturningUser && departmentKey === 'Barangay Certifications' && currentStep === 1" 
+                         class="mb-6 group cursor-default">
+                        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500/10 via-green-500/10 to-emerald-500/10 border border-emerald-500/20 backdrop-blur-xl p-4 sm:p-6 shadow-xl shadow-emerald-500/5">
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-400/10 rounded-full blur-3xl animate-pulse-slow"></div>
+                            
+                            <div class="relative flex items-start gap-3 sm:gap-5">
+                                <div class="text-3xl sm:text-5xl animate-wave flex-shrink-0">👋</div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-blue-200 text-sm font-medium">Selected: {{ selectedDocType }}</p>
-                                    <p class="text-blue-300/70 text-xs mt-1">
-                                        Click Continue to {{ useQuickSubmit && isReturningUser ? 'sign and submit' : 'fill out the required information' }}.
+                                    <h3 class="text-lg sm:text-xl font-black text-white mb-2 flex flex-wrap items-center gap-2">
+                                        <span>Welcome Back!</span>
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                            VIP Access
+                                        </span>
+                                    </h3>
+                                    <p class="text-sm text-slate-300 leading-relaxed mb-3 sm:mb-4">
+                                        We found your information on file. Use <strong class="text-emerald-400">Quick Submit</strong> 
+                                        to process your request 2x faster - just sign and submit!
                                     </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 2: Form Fields OR Quick Submit -->
-                        <div v-show="currentStep === 2" class="space-y-6 animate-fade-in">
-                            
-                            <!-- ✅ NEW: Quick Submit Flow (Returning Users) -->
-                            <div v-if="useQuickSubmit && isReturningUser">
-                                
-                                <!-- Profile Preview -->
-                                <div class="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-6">
-                                    <h3 class="text-sm font-bold text-white/70 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <span class="w-1 h-4 bg-green-500 rounded-full"></span>
-                                        Your Profile on File
-                                    </h3>
-                                    <div class="grid grid-cols-2 gap-3 text-sm">
-                                        <div v-if="existingProfile.applicant_first_name">
-                                            <p class="text-gray-500 text-xs">Full Name</p>
-                                            <p class="text-white font-medium">
-                                                {{ existingProfile.applicant_first_name }} 
-                                                {{ existingProfile.applicant_middle_name }} 
-                                                {{ existingProfile.applicant_last_name }}
-                                            </p>
-                                        </div>
-                                        <div v-if="existingProfile.date_of_birth">
-                                            <p class="text-gray-500 text-xs">Date of Birth</p>
-                                            <p class="text-white font-medium">{{ existingProfile.date_of_birth }}</p>
-                                        </div>
-                                        <div v-if="existingProfile.barangay">
-                                            <p class="text-gray-500 text-xs">Barangay</p>
-                                            <p class="text-white font-medium">{{ existingProfile.barangay }}</p>
-                                        </div>
-                                        <div v-if="existingProfile.civil_status">
-                                            <p class="text-gray-500 text-xs">Civil Status</p>
-                                            <p class="text-white font-medium">{{ existingProfile.civil_status }}</p>
-                                        </div>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-4 italic">
-                                        ✓ This information will be used for your {{ selectedDocType }}
-                                    </p>
-                                </div>
-
-                                <!-- Document-Specific Fields -->
-                                <div v-if="documentSpecificFields.length > 0">
-                                    <h3 class="text-sm font-bold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <span class="w-1 h-4 bg-purple-500 rounded-full"></span>
-                                        Document Details
-                                    </h3>
-                                    
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div v-for="field in documentSpecificFields" :key="field.name"
-                                             :class="field.type === 'textarea' ? 'col-span-1 sm:col-span-2' : 'col-span-1'"
-                                             class="form-group">
-                                            
-                                            <label :for="field.name" class="form-label">
-                                                {{ field.label }}
-                                                <span v-if="field.required !== false" class="text-red-400">*</span>
-                                            </label>
-                                            
-                                            <input 
-                                                v-if="['text', 'number', 'date'].includes(field.type)"
-                                                :id="field.name"
-                                                :type="field.type"
-                                                v-model="form.formData[field.name]"
-                                                :placeholder="field.placeholder || ''"
-                                                class="form-input"
-                                                :class="{'border-red-500 ring-red-500/20': formErrors[field.name]}"
-                                            />
-
-                                            <select 
-                                                v-else-if="field.type === 'select'"
-                                                :id="field.name"
-                                                v-model="form.formData[field.name]"
-                                                class="form-select"
-                                                :class="{'border-red-500 ring-red-500/20': formErrors[field.name]}"
-                                            >
-                                                <option value="" disabled>Select an option</option>
-                                                <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
-                                            </select>
-
-                                            <textarea 
-                                                v-else-if="field.type === 'textarea'"
-                                                :id="field.name"
-                                                v-model="form.formData[field.name]"
-                                                :placeholder="field.placeholder || ''"
-                                                rows="2"
-                                                class="form-textarea"
-                                                :class="{'border-red-500 ring-red-500/20': formErrors[field.name]}"
-                                            ></textarea>
-
-                                            <p v-if="formErrors[field.name]" class="form-error">
-                                                {{ formErrors[field.name] }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Signature Pad -->
-                                <div class="mt-6 pt-6 border-t border-white/10">
-                                    <h3 class="text-sm font-bold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <span class="w-1 h-4 bg-blue-500 rounded-full"></span>
-                                        Your Signature
-                                        <span class="text-red-400">*</span>
-                                    </h3>
-                                    
-                                    <div class="bg-gray-800/50 border-2 border-gray-700 rounded-2xl p-4">
-                                        <p class="text-xs text-gray-400 mb-3">Sign below to submit your request</p>
-                                        <canvas
-                                            ref="signatureCanvas"
-                                            @mousedown="startDrawing"
-                                            @mousemove="draw"
-                                            @mouseup="stopDrawing"
-                                            @mouseleave="stopDrawing"
-                                            @touchstart.prevent="startDrawing"
-                                            @touchmove.prevent="draw"
-                                            @touchend.prevent="stopDrawing"
-                                            class="w-full h-40 bg-white rounded-xl cursor-crosshair touch-none"
-                                        ></canvas>
-                                        <div class="flex justify-end mt-3">
-                                            <button
-                                                type="button"
-                                                @click="clearSignature"
-                                                class="text-xs text-red-400 hover:text-red-300 font-medium flex items-center gap-1"
-                                            >
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                </svg>
-                                                Clear Signature
-                                            </button>
-                                        </div>
-                                        <p v-if="formErrors.signature" class="form-error mt-2">
-                                            {{ formErrors.signature }}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <!-- Remarks (Optional) -->
-                                <div class="form-group">
-                                    <label for="remarks-quick" class="form-label">
-                                        Additional Notes <span class="text-gray-500 text-xs">(Optional)</span>
-                                    </label>
-                                    <textarea 
-                                        id="remarks-quick"
-                                        v-model="form.remarks" 
-                                        rows="3" 
-                                        class="form-textarea"
-                                        placeholder="Any additional information..."
-                                    ></textarea>
-                                </div>
-                            </div>
-
-                            <!-- Standard Full Form Flow -->
-                            <div v-else>
-                                <!-- First Half of Fields -->
-                                <div v-if="fieldsStep1.length > 0">
-                                    <h3 class="text-sm font-bold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <span class="w-1 h-4 bg-blue-500 rounded-full"></span>
-                                        Personal Information
-                                    </h3>
-                                    
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div v-for="field in fieldsStep1" :key="`step1-${field.name}`"
-                                             :class="field.type === 'textarea' ? 'col-span-1 sm:col-span-2' : 'col-span-1'"
-                                             class="form-group">
-                                            
-                                            <label :for="field.name" class="form-label">
-                                                {{ field.label }}
-                                                <span v-if="field.required !== false" class="text-red-400">*</span>
-                                            </label>
-                                            
-                                            <input 
-                                                v-if="['text', 'number', 'date', 'datetime-local', 'time', 'email'].includes(field.type)"
-                                                :id="field.name"
-                                                :type="field.type"
-                                                v-model="form.formData[field.name]"
-                                                :placeholder="field.placeholder || ''"
-                                                class="form-input"
-                                                :class="{'border-red-500 ring-red-500/20': formErrors[field.name] || form.errors[`data.${field.name}`]}"
-                                            />
-
-                                            <select 
-                                                v-else-if="field.type === 'select'"
-                                                :id="field.name"
-                                                v-model="form.formData[field.name]"
-                                                class="form-select"
-                                                :class="{'border-red-500 ring-red-500/20': formErrors[field.name] || form.errors[`data.${field.name}`]}"
-                                            >
-                                                <option value="" disabled>Select an option</option>
-                                                <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
-                                            </select>
-
-                                            <textarea 
-                                                v-else-if="field.type === 'textarea'"
-                                                :id="field.name"
-                                                v-model="form.formData[field.name]"
-                                                :placeholder="field.placeholder || ''"
-                                                rows="3"
-                                                class="form-textarea"
-                                                :class="{'border-red-500 ring-red-500/20': formErrors[field.name] || form.errors[`data.${field.name}`]}"
-                                            ></textarea>
-
-                                            <p v-if="formErrors[field.name] || form.errors[`data.${field.name}`]" class="form-error">
-                                                {{ formErrors[field.name] || form.errors[`data.${field.name}`] }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Second Half of Fields -->
-                                <div v-if="fieldsStep2.length > 0" class="pt-4 border-t border-white/5">
-                                    <h3 class="text-sm font-bold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <span class="w-1 h-4 bg-purple-500 rounded-full"></span>
-                                        Additional Details
-                                    </h3>
-                                    
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div v-for="field in fieldsStep2" :key="`step2-${field.name}`"
-                                             :class="field.type === 'textarea' ? 'col-span-1 sm:col-span-2' : 'col-span-1'"
-                                             class="form-group">
-                                            
-                                            <label :for="`${field.name}-2`" class="form-label">
-                                                {{ field.label }}
-                                                <span v-if="field.required !== false" class="text-red-400">*</span>
-                                            </label>
-                                            
-                                            <input 
-                                                v-if="['text', 'number', 'date', 'datetime-local', 'time', 'email'].includes(field.type)"
-                                                :id="`${field.name}-2`"
-                                                :type="field.type"
-                                                v-model="form.formData[field.name]"
-                                                :placeholder="field.placeholder || ''"
-                                                class="form-input"
-                                                :class="{'border-red-500 ring-red-500/20': formErrors[field.name] || form.errors[`data.${field.name}`]}"
-                                            />
-
-                                            <select 
-                                                v-else-if="field.type === 'select'"
-                                                :id="`${field.name}-2`"
-                                                v-model="form.formData[field.name]"
-                                                class="form-select"
-                                                :class="{'border-red-500 ring-red-500/20': formErrors[field.name] || form.errors[`data.${field.name}`]}"
-                                            >
-                                                <option value="" disabled>Select an option</option>
-                                                <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
-                                            </select>
-
-                                            <textarea 
-                                                v-else-if="field.type === 'textarea'"
-                                                :id="`${field.name}-2`"
-                                                v-model="form.formData[field.name]"
-                                                :placeholder="field.placeholder || ''"
-                                                rows="3"
-                                                class="form-textarea"
-                                                :class="{'border-red-500 ring-red-500/20': formErrors[field.name] || form.errors[`data.${field.name}`]}"
-                                            ></textarea>
-
-                                            <p v-if="formErrors[field.name] || form.errors[`data.${field.name}`]" class="form-error">
-                                                {{ formErrors[field.name] || form.errors[`data.${field.name}`] }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Attachments & Remarks -->
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/5">
-                                    
-                                    <!-- File Upload -->
-                                    <div class="form-group">
-                                        <label class="form-label">Supporting Documents</label>
-                                        <div class="relative">
-                                            <input 
-                                                type="file" 
-                                                @change="handleFileInput"
-                                                class="hidden" 
-                                                id="file-upload"
-                                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                                                multiple
-                                            />
-                                            <label for="file-upload" class="flex flex-col items-center justify-center w-full h-28 sm:h-32 border-2 border-dashed border-white/20 rounded-xl sm:rounded-2xl cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5 transition-all">
-                                                <template v-if="!form.attachments">
-                                                    <span class="text-3xl mb-2">📎</span>
-                                                    <p class="text-xs text-gray-400">Click to upload</p>
-                                                    <p class="text-[10px] text-gray-500 mt-1">Max 10MB</p>
-                                                </template>
-                                                <template v-else>
-                                                <div class="text-center px-4">
-                                                    <span class="text-2xl mb-2 block">✅</span>
-                                                    <span class="text-xs text-green-400 font-semibold block truncate max-w-[150px]">
-                                                        {{ form.attachments.length }} file(s) selected
-                                                    </span>
-                                                    <p class="text-[10px] text-gray-500 mt-1">Click to change</p>
-                                                </div>
-                                                </template>
-                                            </label>
-                                        </div>
-                                        <div v-if="form.errors.attachments" class="form-error">{{ form.errors.attachments }}</div>
-                                    </div>
-
-                                    <!-- Remarks -->
-                                    <div class="form-group">
-                                        <label for="remarks" class="form-label">
-                                            Additional Notes <span class="text-gray-500 text-xs">(Optional)</span>
-                                        </label>
-                                        <textarea 
-                                            id="remarks"
-                                            v-model="form.remarks" 
-                                            rows="4" 
-                                            class="form-textarea"
-                                            placeholder="Any additional information..."
-                                        ></textarea>
+                                    <div class="flex items-center gap-2 text-xs text-emerald-400">
+                                        <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                        </svg>
+                                        <span class="font-semibold">Your profile is up to date</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </Transition>
 
-                        <!-- Navigation Buttons -->
-                        <div class="flex gap-3 mt-6 sm:mt-8 pt-6 border-t border-white/10">
-                            <button
-                                v-if="currentStep > 1"
-                                type="button"
-                                @click="prevStep"
-                                class="flex-1 sm:flex-none sm:px-8 py-3 sm:py-3.5 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl sm:rounded-2xl transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 flex items-center justify-center gap-2"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                <!-- Enhanced Progress Steps -->
+                <div class="mb-6 sm:mb-8 animate-fade-in" style="animation-delay: 0.2s;">
+                    <div class="relative flex items-center justify-between mb-4 px-4 sm:px-0">
+                        <!-- Step 1 -->
+                        <div class="flex flex-col items-center relative z-10">
+                            <div :class="[
+                                'w-10 h-10 sm:w-12 sm:h-12 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-500 flex items-center justify-center shadow-lg',
+                                currentStep >= 1 
+                                    ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white scale-110 shadow-blue-500/50' 
+                                    : 'bg-slate-800/50 text-slate-600 border-2 border-slate-700'
+                            ]">
+                                <svg v-if="currentStep > 1" class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                 </svg>
-                                <span class="hidden sm:inline">Back</span>
-                            </button>
-
-                            <button
-                                v-if="currentStep < 2"
-                                type="button"
-                                @click="nextStep"
-                                class="flex-1 py-3 sm:py-3.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold rounded-xl sm:rounded-2xl transition-all duration-200 active:scale-95 shadow-lg shadow-blue-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 flex items-center justify-center gap-2"
-                            >
-                                <span>Continue</span>
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                </svg>
-                            </button>
-
-                            <button
-                                v-if="currentStep === 2"
-                                type="submit"
-                                :disabled="form.processing"
-                                class="flex-1 py-3 sm:py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-xl sm:rounded-2xl transition-all duration-200 active:scale-95 shadow-lg shadow-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 flex items-center justify-center gap-2"
-                            >
-                                <svg v-if="form.processing" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span v-if="!form.processing">
-                                    {{ useQuickSubmit && isReturningUser ? '✓ Sign & Submit' : 'Submit Application' }}
-                                </span>
-                                <span v-else>Processing...</span>
-                            </button>
+                                <span v-else>1</span>
+                            </div>
+                            <span :class="['mt-1.5 sm:mt-2 text-[10px] sm:text-xs font-bold transition-colors duration-300 text-center max-w-[80px] sm:max-w-none', currentStep >= 1 ? 'text-blue-400' : 'text-slate-600']">
+                                Document
+                            </span>
                         </div>
-                    </form>
+
+                        <!-- Progress Line -->
+                        <div class="absolute left-5 right-5 sm:left-6 sm:right-6 top-5 sm:top-6 h-0.5 sm:h-1 bg-slate-800 -z-0">
+                            <div 
+                                class="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-700 ease-out rounded-full shadow-lg shadow-blue-500/50"
+                                :style="{ width: currentStep > 1 ? '100%' : '0%' }"
+                            ></div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="flex flex-col items-center relative z-10">
+                            <div :class="[
+                                'w-10 h-10 sm:w-12 sm:h-12 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-500 flex items-center justify-center shadow-lg',
+                                currentStep >= 2 
+                                    ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white scale-110 shadow-purple-500/50' 
+                                    : 'bg-slate-800/50 text-slate-600 border-2 border-slate-700'
+                            ]">
+                                2
+                            </div>
+                            <span :class="['mt-1.5 sm:mt-2 text-[10px] sm:text-xs font-bold transition-colors duration-300 text-center max-w-[80px] sm:max-w-none', currentStep >= 2 ? 'text-purple-400' : 'text-slate-600']">
+                                {{ useQuickSubmit && isReturningUser ? 'Submit' : 'Details' }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Help Text -->
-                <p class="text-center text-xs sm:text-sm text-gray-500 mt-4 sm:mt-6">
-                    Need help? Contact support at <a href="tel:123-456-7890" class="text-blue-400 hover:text-blue-300 underline">123-456-7890</a>
-                </p>
+                <!-- Main Form Card -->
+                <Transition name="scale-in">
+                    <div v-if="isPageLoaded" class="relative group">
+                        <!-- Glow effect -->
+                        <div class="absolute -inset-0.5 sm:-inset-1 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                        
+                        <div class="relative bg-slate-900/50 backdrop-blur-2xl border border-white/10 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden">
+                            
+                            <!-- Card Header -->
+                            <div class="relative overflow-hidden">
+                                <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10"></div>
+                                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDIwIDAgTCAwIDAgMCAyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwgMjU1LCAyNTUsIDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
+                                
+                                <div class="relative px-4 sm:px-6 py-4 sm:py-5 border-b border-white/5">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl sm:text-2xl shadow-lg animate-float flex-shrink-0">
+                                            {{ currentStep === 1 ? '📋' : (useQuickSubmit && isReturningUser ? '✍️' : '📝') }}
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <h2 class="text-base sm:text-lg font-black text-white truncate">
+                                                {{ currentStep === 1 ? 'Select Document Type' : (useQuickSubmit && isReturningUser ? 'Quick Submit' : 'Required Information') }}
+                                            </h2>
+                                            <p class="text-xs text-slate-400">Step {{ currentStep }} of 2</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form @submit.prevent="submit" class="p-4 sm:p-6 lg:p-8">
+                                
+                                <!-- Step 1: Document Type Selection -->
+                                <Transition name="fade-slide" mode="out-in">
+                                    <div v-if="currentStep === 1" key="step1" class="space-y-5 sm:space-y-6">
+                                        
+                                        <!-- Document Type Cards -->
+                                        <div class="form-group">
+                                            <label class="block text-sm font-bold text-slate-200 mb-3">
+                                                <span class="flex items-center gap-2">
+                                                    Type of Document 
+                                                    <span class="text-red-400">*</span>
+                                                    <span class="ml-auto text-xs text-slate-500 font-normal">{{ config.types.length }} options</span>
+                                                </span>
+                                            </label>
+                                            
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <button
+                                                    v-for="(type, index) in config.types"
+                                                    :key="type"
+                                                    type="button"
+                                                    @click="selectedDocType = type"
+                                                    :style="{ animationDelay: `${index * 50}ms` }"
+                                                    :class="[
+                                                        'relative group/card overflow-hidden rounded-xl sm:rounded-2xl border-2 transition-all duration-300 text-left animate-fade-in-up',
+                                                        selectedDocType === type
+                                                            ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-blue-500 shadow-lg shadow-blue-500/20 scale-[1.02]'
+                                                            : 'bg-slate-800/30 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800/50 active:scale-[0.98]'
+                                                    ]"
+                                                >
+                                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover/card:translate-x-[100%] transition-transform duration-1000"></div>
+                                                    
+                                                    <div class="relative p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+                                                        <div :class="[
+                                                            'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl flex-shrink-0 transition-all duration-300',
+                                                            selectedDocType === type 
+                                                                ? 'bg-blue-500/30 shadow-lg shadow-blue-500/30 scale-110' 
+                                                                : 'bg-slate-700/30 group-hover/card:scale-110'
+                                                        ]">
+                                                            📄
+                                                        </div>
+                                                        <div class="flex-1 min-w-0">
+                                                            <span class="text-xs sm:text-sm font-bold text-white block truncate">{{ type }}</span>
+                                                            <span class="text-[10px] sm:text-xs text-slate-400">{{ currentFields.length }} fields required</span>
+                                                        </div>
+                                                        <Transition name="scale-bounce">
+                                                            <div v-if="selectedDocType === type" class="flex-shrink-0">
+                                                                <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/50">
+                                                                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                                    </svg>
+                                                                </div>
+                                                            </div>
+                                                        </Transition>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                            
+                                            <Transition name="fade">
+                                                <div v-if="formErrors.document_type || form.errors.document_type" class="mt-2 text-sm text-red-400 flex items-center gap-1.5">
+                                                    <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    {{ formErrors.document_type || form.errors.document_type }}
+                                                </div>
+                                            </Transition>
+                                        </div>
+
+                                        <!-- Submission Method (Returning Users) -->
+                                        <Transition name="fade-slide">
+                                            <div v-if="isReturningUser && departmentKey === 'Barangay Certifications' && selectedDocType" 
+                                                 class="form-group">
+                                                <label class="block text-sm font-bold text-slate-200 mb-3">Choose Submission Method</label>
+                                                
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                                                    <!-- Quick Submit -->
+                                                    <button
+                                                        type="button"
+                                                        @click="useQuickSubmit = true"
+                                                        :class="[
+                                                            'relative group/method overflow-hidden rounded-xl sm:rounded-2xl border-2 transition-all duration-300 text-left p-4 sm:p-6',
+                                                            useQuickSubmit
+                                                                ? 'bg-gradient-to-br from-emerald-500/20 to-green-500/20 border-emerald-500 shadow-lg shadow-emerald-500/20'
+                                                                : 'bg-slate-800/30 border-slate-700/50 hover:border-slate-600 active:scale-[0.98]'
+                                                        ]"
+                                                    >
+                                                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover/method:translate-x-[100%] transition-transform duration-1000"></div>
+                                                        
+                                                        <div class="relative">
+                                                            <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                                                                <div :class="[
+                                                                    'w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-2xl sm:text-3xl transition-all duration-300 flex-shrink-0',
+                                                                    useQuickSubmit ? 'bg-emerald-500/30 scale-110' : 'bg-slate-700/30'
+                                                                ]">
+                                                                    ⚡
+                                                                </div>
+                                                                <div class="flex-1 min-w-0">
+                                                                    <span class="text-sm sm:text-base font-black text-white block">Quick Submit</span>
+                                                                    <span class="text-[10px] sm:text-xs text-slate-400">Lightning fast</span>
+                                                                </div>
+                                                                <Transition name="scale-bounce">
+                                                                    <div v-if="useQuickSubmit" class="flex-shrink-0">
+                                                                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                </Transition>
+                                                            </div>
+                                                            <div class="space-y-1 sm:space-y-1.5 text-[10px] sm:text-xs text-slate-400">
+                                                                <p class="flex items-center gap-1.5 sm:gap-2">
+                                                                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                                    </svg>
+                                                                    <span>Uses your saved information</span>
+                                                                </p>
+                                                                <p class="flex items-center gap-1.5 sm:gap-2">
+                                                                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                                    </svg>
+                                                                    <span>Just add purpose & sign</span>
+                                                                </p>
+                                                                <p class="flex items-center gap-1.5 sm:gap-2">
+                                                                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                                    </svg>
+                                                                    <span>2x faster processing</span>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+
+                                                    <!-- Full Form -->
+                                                    <button
+                                                        type="button"
+                                                        @click="useQuickSubmit = false"
+                                                        :class="[
+                                                            'relative group/method overflow-hidden rounded-xl sm:rounded-2xl border-2 transition-all duration-300 text-left p-4 sm:p-6',
+                                                            !useQuickSubmit
+                                                                ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-blue-500 shadow-lg shadow-blue-500/20'
+                                                                : 'bg-slate-800/30 border-slate-700/50 hover:border-slate-600 active:scale-[0.98]'
+                                                        ]"
+                                                    >
+                                                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover/method:translate-x-[100%] transition-transform duration-1000"></div>
+                                                        
+                                                        <div class="relative">
+                                                            <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                                                                <div :class="[
+                                                                    'w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-2xl sm:text-3xl transition-all duration-300 flex-shrink-0',
+                                                                    !useQuickSubmit ? 'bg-blue-500/30 scale-110' : 'bg-slate-700/30'
+                                                                ]">
+                                                                    📝
+                                                                </div>
+                                                                <div class="flex-1 min-w-0">
+                                                                    <span class="text-sm sm:text-base font-black text-white block">Complete Form</span>
+                                                                    <span class="text-[10px] sm:text-xs text-slate-400">Full control</span>
+                                                                </div>
+                                                                <Transition name="scale-bounce">
+                                                                    <div v-if="!useQuickSubmit" class="flex-shrink-0">
+                                                                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                </Transition>
+                                                            </div>
+                                                            <div class="space-y-1 sm:space-y-1.5 text-[10px] sm:text-xs text-slate-400">
+                                                                <p class="flex items-center gap-1.5 sm:gap-2">
+                                                                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                                    </svg>
+                                                                    <span>Update your information</span>
+                                                                </p>
+                                                                <p class="flex items-center gap-1.5 sm:gap-2">
+                                                                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                                    </svg>
+                                                                    <span>Add new details</span>
+                                                                </p>
+                                                                <p class="flex items-center gap-1.5 sm:gap-2">
+                                                                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                                    </svg>
+                                                                    <span>Full control over data</span>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </Transition>
+
+                                        <!-- Info Box -->
+                                        <Transition name="fade-slide">
+                                            <div v-if="selectedDocType" class="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-4 sm:p-5">
+                                                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full blur-3xl"></div>
+                                                <div class="relative flex items-start gap-3 sm:gap-4">
+                                                    <div class="text-2xl sm:text-3xl animate-pulse-slow flex-shrink-0">ℹ️</div>
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="text-blue-200 text-xs sm:text-sm font-bold mb-1">Selected: {{ selectedDocType }}</p>
+                                                        <p class="text-blue-300/70 text-[10px] sm:text-xs leading-relaxed">
+                                                            Click Continue to {{ useQuickSubmit && isReturningUser ? 'sign and submit your request' : 'fill out the required information' }}.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Transition>
+                                    </div>
+                                </Transition>
+
+                                <!-- Step 2: Form Fields or Quick Submit -->
+                                <Transition name="fade-slide" mode="out-in">
+                                    <div v-if="currentStep === 2" key="step2" class="space-y-5 sm:space-y-6">
+                                        
+                                        <!-- Quick Submit Mode -->
+                                        <template v-if="useQuickSubmit && isReturningUser">
+                                            <div class="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-500/5 to-green-500/5 border border-emerald-500/20 p-4 sm:p-5 mb-5 sm:mb-6">
+                                                <div class="flex items-start gap-3 sm:gap-4">
+                                                    <div class="text-2xl sm:text-3xl flex-shrink-0">⚡</div>
+                                                    <div class="flex-1 min-w-0">
+                                                        <h3 class="text-sm sm:text-base font-bold text-emerald-400 mb-1">Quick Submit Mode</h3>
+                                                        <p class="text-[10px] sm:text-xs text-slate-400">We're using your saved profile. Just fill in the document-specific details and sign below.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Document-Specific Fields -->
+                                            <div v-if="documentSpecificFields.length > 0" class="space-y-4 sm:space-y-5">
+                                                <div
+                                                    v-for="(field, index) in documentSpecificFields"
+                                                    :key="field.name"
+                                                    :style="{ animationDelay: `${index * 30}ms` }"
+                                                    class="animate-fade-in-up"
+                                                >
+                                                    <component 
+                                                        :is="'div'" 
+                                                        class="form-group"
+                                                    >
+                                                        <label :for="field.name + '-quick'" class="block text-xs sm:text-sm font-bold text-slate-200 mb-2">
+                                                            {{ field.label }}
+                                                            <span v-if="field.required !== false" class="text-red-400 ml-1">*</span>
+                                                        </label>
+
+                                                        <!-- Text Input -->
+                                                        <input
+                                                            v-if="field.type === 'text'"
+                                                            :id="field.name + '-quick'"
+                                                            v-model="form.formData[field.name]"
+                                                            type="text"
+                                                            :placeholder="field.placeholder || field.label"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white placeholder-slate-500 transition-all duration-300 focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                                                            ]"
+                                                        />
+
+                                                        <!-- Textarea -->
+                                                        <textarea
+                                                            v-else-if="field.type === 'textarea'"
+                                                            :id="field.name + '-quick'"
+                                                            v-model="form.formData[field.name]"
+                                                            :rows="field.rows || 3"
+                                                            :placeholder="field.placeholder || field.label"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white placeholder-slate-500 transition-all duration-300 resize-none focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                                                            ]"
+                                                        ></textarea>
+
+                                                        <!-- Select -->
+                                                        <select
+                                                            v-else-if="field.type === 'select'"
+                                                            :id="field.name + '-quick'"
+                                                            v-model="form.formData[field.name]"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white transition-all duration-300 focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                                                            ]"
+                                                        >
+                                                            <option value="">Select {{ field.label }}</option>
+                                                            <option v-for="option in field.options" :key="option" :value="option">
+                                                                {{ option }}
+                                                            </option>
+                                                        </select>
+
+                                                        <!-- Number Input -->
+                                                        <input
+                                                            v-else-if="field.type === 'number'"
+                                                            :id="field.name + '-quick'"
+                                                            v-model="form.formData[field.name]"
+                                                            type="number"
+                                                            :placeholder="field.placeholder || field.label"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white placeholder-slate-500 transition-all duration-300 focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                                                            ]"
+                                                        />
+
+                                                        <!-- Date Input -->
+                                                        <input
+                                                            v-else-if="field.type === 'date'"
+                                                            :id="field.name + '-quick'"
+                                                            v-model="form.formData[field.name]"
+                                                            type="date"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white transition-all duration-300 focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                                                            ]"
+                                                        />
+
+                                                        <!-- Error Message -->
+                                                        <Transition name="fade">
+                                                            <div v-if="formErrors[field.name] || form.errors[`data.${field.name}`]" class="mt-1.5 text-xs text-red-400 flex items-center gap-1.5">
+                                                                <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                                {{ formErrors[field.name] || form.errors[`data.${field.name}`] }}
+                                                            </div>
+                                                        </Transition>
+                                                    </component>
+                                                </div>
+                                            </div>
+
+                                            <!-- Signature Pad -->
+                                            <div class="form-group mt-6 sm:mt-8">
+                                                <label class="block text-xs sm:text-sm font-bold text-slate-200 mb-3">
+                                                    Your Signature
+                                                    <span class="text-red-400 ml-1">*</span>
+                                                </label>
+                                                <div :class="[
+                                                    'relative overflow-hidden rounded-xl border-2 transition-all duration-300',
+                                                    formErrors.signature ? 'border-red-500/50' : 'border-slate-700'
+                                                ]">
+                                                    <canvas
+                                                        ref="signatureCanvas"
+                                                        @mousedown="startDrawing"
+                                                        @mousemove="draw"
+                                                        @mouseup="stopDrawing"
+                                                        @mouseleave="stopDrawing"
+                                                        @touchstart="startDrawing"
+                                                        @touchmove="draw"
+                                                        @touchend="stopDrawing"
+                                                        class="w-full h-40 sm:h-48 bg-slate-800/30 cursor-crosshair touch-none"
+                                                    ></canvas>
+                                                    
+                                                    <!-- Clear Button -->
+                                                    <button
+                                                        v-if="hasSignature"
+                                                        type="button"
+                                                        @click="clearSignature"
+                                                        class="absolute top-2 right-2 p-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 rounded-lg transition-all duration-300 active:scale-95"
+                                                    >
+                                                        <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                        </svg>
+                                                    </button>
+                                                    
+                                                    <!-- Placeholder Text -->
+                                                    <div v-if="!hasSignature" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                        <p class="text-slate-500 text-xs sm:text-sm font-medium">Sign here with your mouse or finger</p>
+                                                    </div>
+                                                </div>
+                                                <Transition name="fade">
+                                                    <div v-if="formErrors.signature" class="mt-1.5 text-xs text-red-400 flex items-center gap-1.5">
+                                                        <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                        {{ formErrors.signature }}
+                                                    </div>
+                                                </Transition>
+                                            </div>
+                                        </template>
+
+                                        <!-- Full Form Mode -->
+                                        <template v-else>
+                                            <div class="space-y-4 sm:space-y-5">
+                                                <div
+                                                    v-for="(field, index) in currentFields"
+                                                    :key="field.name"
+                                                    :style="{ animationDelay: `${index * 30}ms` }"
+                                                    class="animate-fade-in-up"
+                                                >
+                                                    <component 
+                                                        :is="'div'" 
+                                                        class="form-group"
+                                                    >
+                                                        <label :for="field.name" class="block text-xs sm:text-sm font-bold text-slate-200 mb-2">
+                                                            {{ field.label }}
+                                                            <span v-if="field.required !== false" class="text-red-400 ml-1">*</span>
+                                                        </label>
+
+                                                        <!-- Text Input -->
+                                                        <input
+                                                            v-if="field.type === 'text'"
+                                                            :id="field.name"
+                                                            v-model="form.formData[field.name]"
+                                                            type="text"
+                                                            :placeholder="field.placeholder || field.label"
+                                                            :disabled="field.name === 'barangay' && selectedBarangay"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white placeholder-slate-500 transition-all duration-300 focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20',
+                                                                field.name === 'barangay' && selectedBarangay && 'opacity-75 cursor-not-allowed'
+                                                            ]"
+                                                        />
+
+                                                        <!-- Textarea -->
+                                                        <textarea
+                                                            v-else-if="field.type === 'textarea'"
+                                                            :id="field.name"
+                                                            v-model="form.formData[field.name]"
+                                                            :rows="field.rows || 3"
+                                                            :placeholder="field.placeholder || field.label"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white placeholder-slate-500 transition-all duration-300 resize-none focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                                                            ]"
+                                                        ></textarea>
+
+                                                        <!-- Select -->
+                                                        <select
+                                                            v-else-if="field.type === 'select'"
+                                                            :id="field.name"
+                                                            v-model="form.formData[field.name]"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white transition-all duration-300 focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                                                            ]"
+                                                        >
+                                                            <option value="">Select {{ field.label }}</option>
+                                                            <option v-for="option in field.options" :key="option" :value="option">
+                                                                {{ option }}
+                                                            </option>
+                                                        </select>
+
+                                                        <!-- Number Input -->
+                                                        <input
+                                                            v-else-if="field.type === 'number'"
+                                                            :id="field.name"
+                                                            v-model="form.formData[field.name]"
+                                                            type="number"
+                                                            :placeholder="field.placeholder || field.label"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white placeholder-slate-500 transition-all duration-300 focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                                                            ]"
+                                                        />
+
+                                                        <!-- Date Input -->
+                                                        <input
+                                                            v-else-if="field.type === 'date'"
+                                                            :id="field.name"
+                                                            v-model="form.formData[field.name]"
+                                                            type="date"
+                                                            :class="[
+                                                                'w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border rounded-xl text-sm text-white transition-all duration-300 focus:outline-none',
+                                                                (formErrors[field.name] || form.errors[`data.${field.name}`])
+                                                                    ? 'border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                                                    : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                                                            ]"
+                                                        />
+
+                                                        <!-- Error Message -->
+                                                        <Transition name="fade">
+                                                            <div v-if="formErrors[field.name] || form.errors[`data.${field.name}`]" class="mt-1.5 text-xs text-red-400 flex items-center gap-1.5">
+                                                                <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                                {{ formErrors[field.name] || form.errors[`data.${field.name}`] }}
+                                                            </div>
+                                                        </Transition>
+                                                    </component>
+                                                </div>
+                                            </div>
+
+                                            <!-- Optional Attachments -->
+                                            <div class="form-group mt-6">
+                                                <label class="block text-xs sm:text-sm font-bold text-slate-200 mb-2">
+                                                    Attachments (Optional)
+                                                    <span class="text-xs text-slate-500 font-normal ml-2">Max 10MB per file</span>
+                                                </label>
+                                                <div class="relative">
+                                                    <input
+                                                        type="file"
+                                                        @change="handleFileInput"
+                                                        multiple
+                                                        accept="image/*,.pdf,.doc,.docx"
+                                                        class="hidden"
+                                                        id="file-upload"
+                                                    />
+                                                    <label
+                                                        for="file-upload"
+                                                        class="flex items-center justify-center gap-3 w-full px-4 py-6 border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-300 cursor-pointer group"
+                                                    >
+                                                        <svg class="w-8 h-8 text-slate-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                                        </svg>
+                                                        <div class="text-center">
+                                                            <p class="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">Click to upload files</p>
+                                                            <p class="text-xs text-slate-500 mt-0.5">or drag and drop</p>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                                <div v-if="form.attachments && form.attachments.length > 0" class="mt-3 space-y-2">
+                                                    <div v-for="(file, index) in form.attachments" :key="index" class="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                                                        <svg class="w-5 h-5 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                        <div class="flex-1 min-w-0">
+                                                            <p class="text-sm text-white truncate">{{ file.name }}</p>
+                                                            <p class="text-xs text-slate-500">{{ (file.size / 1024 / 1024).toFixed(2) }} MB</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Optional Remarks -->
+                                            <div class="form-group">
+                                                <label for="remarks" class="block text-xs sm:text-sm font-bold text-slate-200 mb-2">
+                                                    Additional Remarks (Optional)
+                                                </label>
+                                                <textarea
+                                                    id="remarks"
+                                                    v-model="form.remarks"
+                                                    rows="3"
+                                                    placeholder="Add any additional information here..."
+                                                    class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 transition-all duration-300 resize-none focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                                ></textarea>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </Transition>
+
+                                <!-- Navigation Buttons -->
+                                <div class="flex gap-3 mt-8 pt-6 border-t border-white/5">
+                                    <Transition name="slide-left">
+                                        <button
+                                            v-if="currentStep > 1"
+                                            type="button"
+                                            @click="prevStep"
+                                            class="group px-6 py-3.5 bg-slate-800/50 hover:bg-slate-700/50 text-white font-bold rounded-xl border border-slate-700/50 hover:border-slate-600 transition-all duration-300 active:scale-95 flex items-center gap-2"
+                                        >
+                                            <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                            </svg>
+                                            <span>Back</span>
+                                        </button>
+                                    </Transition>
+
+                                    <button
+                                        v-if="currentStep < 2"
+                                        type="button"
+                                        @click="nextStep"
+                                        class="group flex-1 py-3.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold rounded-xl transition-all duration-300 active:scale-95 shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 relative overflow-hidden"
+                                    >
+                                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                                        <span class="relative">Continue</span>
+                                        <svg class="relative w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+
+                                    <button
+                                        v-if="currentStep === 2"
+                                        type="submit"
+                                        :disabled="form.processing"
+                                        class="group flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold rounded-xl transition-all duration-300 active:scale-95 shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden"
+                                    >
+                                        <div v-if="!form.processing" class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                                        <svg v-if="form.processing" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span class="relative">{{ form.processing ? 'Submitting...' : 'Submit Request' }}</span>
+                                        <svg v-if="!form.processing" class="relative w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </Transition>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
-/* Form Components */
-.form-group {
-    @apply relative;
-}
-
-.form-label {
-    @apply block text-xs sm:text-sm font-bold text-gray-300 mb-2;
-}
-
-.form-input,
-.form-select,
-.form-textarea {
-    @apply w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800/50 border border-gray-700 rounded-xl sm:rounded-2xl text-white text-sm sm:text-base placeholder-gray-500 transition-all duration-200;
-    @apply focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20;
-    @apply hover:border-gray-600;
-}
-
-.form-select {
-    @apply appearance-none pr-10;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-    background-size: 1.25rem;
-    background-position: right 0.75rem center;
-    background-repeat: no-repeat;
-}
-
-.form-textarea {
-    @apply resize-none;
-}
-
-.form-error {
-    @apply text-red-400 text-xs mt-1.5 flex items-center gap-1;
-}
-
-.form-error::before {
-    content: '⚠️';
-    @apply text-xs;
-}
-
 /* Animations */
-@keyframes fade-in {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes pulse-slow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
-.animate-fade-in {
-    animation: fade-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes gradient-x {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes wave {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(20deg); }
+    75% { transform: rotate(-15deg); }
 }
 
 @keyframes fade-in-up {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in-up {
-    animation: fade-in-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes slide-down {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-slide-down {
-    animation: slide-down 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-/* Mobile Optimizations */
-@media (max-width: 640px) {
-    .form-input:focus,
-    .form-select:focus,
-    .form-textarea:focus {
-        font-size: 16px;
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
-/* Custom Scrollbar */
-textarea::-webkit-scrollbar {
-    width: 6px;
+.animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-gradient-x { 
+    animation: gradient-x 3s ease infinite; 
+    background-size: 200% 200%; 
 }
+.animate-wave { animation: wave 0.5s ease-in-out 2; }
+.animate-fade-in-up { animation: fade-in-up 0.5s ease-out; }
+.animate-fade-in { animation: fade-in-up 0.3s ease-out; }
 
-textarea::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 10px;
-}
+/* Vue Transitions */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
-textarea::-webkit-scrollbar-thumb {
-    background: rgba(59, 130, 246, 0.4);
-    border-radius: 10px;
-}
+.fade-slide-enter-active, .fade-slide-leave-active { transition: all 0.3s; }
+.fade-slide-enter-from { opacity: 0; transform: translateY(10px); }
+.fade-slide-leave-to { opacity: 0; transform: translateY(-10px); }
+
+.slide-down-enter-active, .slide-down-leave-active { transition: all 0.3s; }
+.slide-down-enter-from { opacity: 0; transform: translateY(-20px); }
+.slide-down-leave-to { opacity: 0; transform: translateY(-20px); }
+
+.fade-up-enter-active { transition: all 0.5s ease-out; }
+.fade-up-enter-from { opacity: 0; transform: translateY(30px); }
+
+.scale-in-enter-active { transition: all 0.3s; }
+.scale-in-enter-from { opacity: 0; transform: scale(0.95); }
+
+.scale-bounce-enter-active { transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+.scale-bounce-enter-from { opacity: 0; transform: scale(0); }
+
+.slide-left-enter-active { transition: all 0.3s; }
+.slide-left-enter-from { opacity: 0; transform: translateX(-20px); }
 </style>

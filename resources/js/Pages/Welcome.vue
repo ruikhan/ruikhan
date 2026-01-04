@@ -10,58 +10,78 @@ defineProps({
 
 // Cinematic Intro State
 const showIntro = ref(true);
-const introPhase = ref('initial'); // initial -> logo -> tagline -> features -> fadeout -> complete
+const introPhase = ref('initial');
 const currentFeature = ref(0);
 const skipIntro = ref(false);
 
-// Mouse tracking
+// Enhanced Mouse & Scroll Tracking
 const mouseX = ref(0);
 const mouseY = ref(0);
 const scrollY = ref(0);
+const scrollProgress = ref(0);
 
-// Features for cinematic showcase
+// Features with enhanced data
 const cinematicFeatures = [
     {
         icon: '📄',
         title: 'E-Documents',
         subtitle: 'Instant Digital Services',
         description: 'Request barangay clearances and permits with QR verification',
-        gradient: 'from-blue-500 to-cyan-500',
-        glow: 'blue'
+        gradient: 'from-blue-500 via-blue-400 to-cyan-500',
+        glow: 'blue',
+        particles: '💫'
     },
     {
         icon: '🚨',
         title: 'Rapid Response',
         subtitle: 'Emergency Services',
         description: 'Direct line to emergency with real-time geo-tagging',
-        gradient: 'from-red-500 to-orange-500',
-        glow: 'red'
+        gradient: 'from-red-500 via-orange-500 to-red-400',
+        glow: 'red',
+        particles: '⚡'
     },
     {
         icon: '💳',
         title: 'Secure Payments',
         subtitle: 'Encrypted Transactions',
         description: 'Pay utilities and taxes through secure virtual gateway',
-        gradient: 'from-emerald-500 to-teal-500',
-        glow: 'emerald'
+        gradient: 'from-emerald-500 via-teal-400 to-emerald-500',
+        glow: 'emerald',
+        particles: '✨'
     },
     {
         icon: '🔒',
         title: 'Data Protection',
         subtitle: 'Military-Grade Security',
         description: 'Your information protected with advanced encryption',
-        gradient: 'from-purple-500 to-indigo-500',
-        glow: 'purple'
+        gradient: 'from-purple-500 via-indigo-400 to-purple-500',
+        glow: 'purple',
+        particles: '🛡️'
     }
 ];
 
+// Optimized event handlers with RAF
+let mouseRAF = null;
+let scrollRAF = null;
+
 const handleMouseMove = (e) => {
-    mouseX.value = e.clientX;
-    mouseY.value = e.clientY;
+    if (mouseRAF) return;
+    mouseRAF = requestAnimationFrame(() => {
+        mouseX.value = e.clientX;
+        mouseY.value = e.clientY;
+        mouseRAF = null;
+    });
 };
 
 const handleScroll = () => {
-    scrollY.value = window.scrollY;
+    if (scrollRAF) return;
+    scrollRAF = requestAnimationFrame(() => {
+        scrollY.value = window.scrollY;
+        const winScroll = document.documentElement.scrollTop;
+        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        scrollProgress.value = height > 0 ? (winScroll / height) * 100 : 0;
+        scrollRAF = null;
+    });
 };
 
 const handleSkipIntro = () => {
@@ -72,19 +92,16 @@ const handleSkipIntro = () => {
     }, 500);
 };
 
-// Cinematic sequence timing
+// Enhanced cinematic sequence
 const startCinematicSequence = () => {
-    // Phase 1: Logo reveal (2s)
     setTimeout(() => {
         if (!skipIntro.value) introPhase.value = 'logo';
     }, 500);
 
-    // Phase 2: Tagline (3.5s)
     setTimeout(() => {
         if (!skipIntro.value) introPhase.value = 'tagline';
     }, 2500);
 
-    // Phase 3: Features showcase (12s total, 3s each)
     setTimeout(() => {
         if (!skipIntro.value) {
             introPhase.value = 'features';
@@ -92,7 +109,6 @@ const startCinematicSequence = () => {
         }
     }, 6000);
 
-    // Phase 4: Fade out and complete (18s)
     setTimeout(() => {
         if (!skipIntro.value) {
             introPhase.value = 'fadeout';
@@ -114,133 +130,141 @@ const startFeatureLoop = () => {
 };
 
 onMounted(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('scroll', handleScroll);
-    
-    // Start cinematic sequence
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
     startCinematicSequence();
 });
 
 onUnmounted(() => {
     window.removeEventListener('mousemove', handleMouseMove);
     window.removeEventListener('scroll', handleScroll);
+    if (mouseRAF) cancelAnimationFrame(mouseRAF);
+    if (scrollRAF) cancelAnimationFrame(scrollRAF);
 });
 
 const currentFeatureData = computed(() => cinematicFeatures[currentFeature.value]);
+const parallaxOffset = computed(() => scrollY.value * 0.5);
 </script>
 
 <template>
     <Head title="Welcome to E-PILI" />
 
-    <!-- Cinematic Introduction Overlay -->
+    <!-- Enhanced Cinematic Intro -->
     <Transition name="intro-fade">
-        <div v-if="showIntro" class="fixed inset-0 z-[9999] bg-black">
-            <!-- Cinematic Background -->
-            <div class="absolute inset-0 overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-radial from-gray-900 via-black to-black"></div>
+        <div v-if="showIntro" class="intro-overlay">
+            <!-- Dynamic Background -->
+            <div class="intro-bg">
+                <div class="intro-gradient"></div>
                 
-                <!-- Animated particles -->
-                <div class="absolute inset-0 opacity-30">
-                    <div v-for="i in 50" :key="i" 
-                         class="absolute w-1 h-1 bg-white rounded-full cinematic-particle"
+                <!-- Enhanced Particles -->
+                <div class="intro-particles">
+                    <div v-for="i in 60" :key="i" 
+                         class="particle"
                          :style="{
                              left: `${Math.random() * 100}%`,
                              top: `${Math.random() * 100}%`,
                              animationDelay: `${Math.random() * 5}s`,
-                             animationDuration: `${3 + Math.random() * 4}s`
+                             animationDuration: `${3 + Math.random() * 4}s`,
+                             width: `${1 + Math.random() * 2}px`,
+                             height: `${1 + Math.random() * 2}px`
                          }"></div>
                 </div>
 
-                <!-- Cinematic light rays -->
-                <div class="absolute inset-0 opacity-20">
-                    <div class="absolute top-0 left-1/4 w-1 h-full bg-gradient-to-b from-blue-500/50 to-transparent rotate-12 blur-xl"></div>
-                    <div class="absolute top-0 right-1/4 w-1 h-full bg-gradient-to-b from-purple-500/50 to-transparent -rotate-12 blur-xl"></div>
+                <!-- Light Rays -->
+                <div class="light-rays">
+                    <div v-for="i in 4" :key="i" 
+                         class="ray"
+                         :style="{
+                             left: `${i * 25}%`,
+                             animationDelay: `${i * 0.5}s`
+                         }"></div>
                 </div>
             </div>
 
             <!-- Skip Button -->
-            <button 
-                @click="handleSkipIntro"
-                class="absolute top-8 right-8 z-50 px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-sm font-semibold hover:bg-white/20 transition-all duration-300 flex items-center gap-2 hover:scale-105"
-            >
-                <span>Skip</span>
+            <button @click="handleSkipIntro" class="skip-btn">
+                <span>Skip Intro</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
                 </svg>
             </button>
 
-            <!-- Content Container -->
-            <div class="relative z-10 h-full flex items-center justify-center">
+            <!-- Content -->
+            <div class="intro-content">
                 
-                <!-- Phase 1: Initial/Logo Reveal -->
+                <!-- Logo Phase -->
                 <Transition name="fade-scale">
-                    <div v-if="introPhase === 'initial' || introPhase === 'logo'" 
-                         class="text-center">
-                        <div class="relative inline-block">
-                            <div class="absolute inset-0 bg-blue-500/30 blur-[100px] rounded-full animate-pulse-glow"></div>
-                            <img :src="logoUrl" 
-                                 alt="E-PILI Logo" 
-                                 class="h-48 md:h-64 relative z-10 drop-shadow-[0_0_50px_rgba(59,130,246,0.5)] animate-float-slow" />
+                    <div v-if="introPhase === 'initial' || introPhase === 'logo'" class="intro-logo-phase">
+                        <div class="logo-container">
+                            <div class="logo-glow"></div>
+                            <img :src="logoUrl" alt="E-PILI Logo" class="logo-img" />
+                            <div class="logo-rings">
+                                <div v-for="i in 3" :key="i" class="ring" :style="{ animationDelay: `${i * 0.2}s` }"></div>
+                            </div>
                         </div>
-                        <Transition name="slide-up-fade">
-                            <h1 v-if="introPhase === 'logo'" 
-                                class="mt-12 text-4xl md:text-6xl font-black text-white tracking-tight">
-                                E-PILI
-                            </h1>
+                        <Transition name="slide-up">
+                            <h1 v-if="introPhase === 'logo'" class="logo-title">E-PILI</h1>
                         </Transition>
                     </div>
                 </Transition>
 
-                <!-- Phase 2: Tagline -->
+                <!-- Tagline Phase -->
                 <Transition name="fade-scale">
-                    <div v-if="introPhase === 'tagline'" class="text-center max-w-4xl px-8">
-                        <h2 class="text-5xl md:text-7xl font-black text-white mb-6 leading-tight">
+                    <div v-if="introPhase === 'tagline'" class="tagline-phase">
+                        <h2 class="tagline-main">
                             The Future of
-                            <span class="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400 animate-gradient-shift">
+                            <span class="tagline-gradient">
                                 Digital Governance
                             </span>
                         </h2>
-                        <p class="text-xl md:text-2xl text-gray-400 font-light animate-fade-in-delayed">
+                        <p class="tagline-sub">
                             Transforming public service through innovation and technology
                         </p>
+                        <div class="tagline-line"></div>
                     </div>
                 </Transition>
 
-                <!-- Phase 3: Features Showcase -->
+                <!-- Features Phase -->
                 <Transition name="fade-scale">
-                    <div v-if="introPhase === 'features'" class="text-center max-w-5xl px-8">
-                        <TransitionGroup name="feature-transition">
-                            <div :key="currentFeature" class="space-y-8">
-                                <!-- Feature Icon -->
-                                <div class="relative inline-block">
-                                    <div :class="`absolute inset-0 bg-gradient-to-r ${currentFeatureData.gradient} blur-[80px] opacity-50 rounded-full animate-pulse-glow`"></div>
-                                    <div :class="`relative text-8xl md:text-9xl filter drop-shadow-[0_0_30px_rgba(59,130,246,0.6)] animate-feature-float`">
+                    <div v-if="introPhase === 'features'" class="features-phase">
+                        <TransitionGroup name="feature">
+                            <div :key="currentFeature" class="feature-showcase">
+                                <!-- Icon with particles -->
+                                <div class="feature-icon-wrapper">
+                                    <div :class="`feature-glow bg-gradient-to-r ${currentFeatureData.gradient}`"></div>
+                                    <div class="feature-icon">
                                         {{ currentFeatureData.icon }}
+                                    </div>
+                                    <div class="feature-particles">
+                                        <span v-for="i in 8" :key="i" 
+                                              class="feature-particle"
+                                              :style="{ animationDelay: `${i * 0.1}s` }">
+                                            {{ currentFeatureData.particles }}
+                                        </span>
                                     </div>
                                 </div>
 
-                                <!-- Feature Title -->
-                                <div>
-                                    <p :class="`text-sm md:text-base font-bold uppercase tracking-[0.3em] text-transparent bg-clip-text bg-gradient-to-r ${currentFeatureData.gradient} mb-3`">
+                                <!-- Content -->
+                                <div class="feature-content">
+                                    <p :class="`feature-subtitle text-transparent bg-clip-text bg-gradient-to-r ${currentFeatureData.gradient}`">
                                         {{ currentFeatureData.subtitle }}
                                     </p>
-                                    <h3 class="text-5xl md:text-7xl font-black text-white mb-6">
+                                    <h3 class="feature-title">
                                         {{ currentFeatureData.title }}
                                     </h3>
-                                    <p class="text-xl md:text-2xl text-gray-400 font-light max-w-2xl mx-auto">
+                                    <p class="feature-desc">
                                         {{ currentFeatureData.description }}
                                     </p>
                                 </div>
 
-                                <!-- Progress Dots -->
-                                <div class="flex justify-center gap-3 pt-8">
+                                <!-- Progress -->
+                                <div class="feature-progress">
                                     <div v-for="(feature, index) in cinematicFeatures" 
                                          :key="index"
                                          :class="[
-                                             'w-2 h-2 rounded-full transition-all duration-500',
-                                             index === currentFeature 
-                                                 ? `bg-gradient-to-r ${currentFeatureData.gradient} w-12` 
-                                                 : 'bg-white/20'
+                                             'progress-dot',
+                                             index === currentFeature && 'active',
+                                             `bg-gradient-to-r ${currentFeatureData.gradient}`
                                          ]">
                                     </div>
                                 </div>
@@ -253,180 +277,187 @@ const currentFeatureData = computed(() => cinematicFeatures[currentFeature.value
         </div>
     </Transition>
 
-    <!-- Main Portal (existing content) -->
-    <div class="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden relative">
+    <!-- Main Portal -->
+    <div class="portal-container">
         
-        <!-- Enhanced Animated Background with Mouse Tracking -->
-        <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#020617] to-black"></div>
+        <!-- Enhanced Background -->
+        <div class="portal-bg">
+            <div class="bg-base"></div>
             
-            <!-- Dynamic Gradient Mesh -->
-            <div class="absolute inset-0 opacity-30">
-                <div class="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[120px] animate-float" 
-                     :style="{ transform: `translate(${mouseX * 0.02}px, ${mouseY * 0.02}px)` }"></div>
-                <div class="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-purple-500/20 rounded-full blur-[100px] animate-float-delayed" 
-                     :style="{ transform: `translate(${-mouseX * 0.015}px, ${mouseY * 0.015}px)` }"></div>
-                <div class="absolute bottom-1/4 left-1/3 w-[450px] h-[450px] bg-cyan-500/15 rounded-full blur-[110px] animate-pulse-slow" 
-                     :style="{ transform: `translate(${mouseX * 0.01}px, ${-mouseY * 0.01}px)` }"></div>
+            <!-- Dynamic Gradients -->
+            <div class="bg-gradients">
+                <div class="gradient gradient-1" 
+                     :style="{ transform: `translate(${mouseX * 0.02}px, ${mouseY * 0.02 - parallaxOffset}px)` }"></div>
+                <div class="gradient gradient-2" 
+                     :style="{ transform: `translate(${-mouseX * 0.015}px, ${mouseY * 0.015 - parallaxOffset}px)` }"></div>
+                <div class="gradient gradient-3" 
+                     :style="{ transform: `translate(${mouseX * 0.01}px, ${-mouseY * 0.01 - parallaxOffset}px)` }"></div>
             </div>
             
-            <!-- Starfield Effect -->
-            <div class="absolute inset-0 opacity-40 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] animate-starfield"></div>
-
-            <!-- Floating Particles -->
-            <div class="absolute inset-0">
-                <div v-for="i in 20" :key="i" 
-                     class="particle absolute w-1 h-1 bg-white/20 rounded-full"
-                     :style="{
-                         left: `${Math.random() * 100}%`,
-                         top: `${Math.random() * 100}%`,
-                         animationDelay: `${Math.random() * 5}s`,
-                         animationDuration: `${5 + Math.random() * 10}s`
-                     }"></div>
-            </div>
+            <!-- Grid Overlay -->
+            <div class="bg-grid"></div>
+            
+            <!-- Noise Texture -->
+            <div class="bg-noise"></div>
         </div>
 
-        <!-- Navigation with Glass Effect -->
-        <nav class="relative z-50 px-6 py-6 max-w-7xl mx-auto">
-            <div class="flex justify-between items-center backdrop-blur-xl bg-white/5 rounded-3xl px-6 py-4 border border-white/10 shadow-2xl nav-glow">
-                <div class="flex items-center gap-4 group cursor-default">
-                    <div class="leading-tight hidden sm:block">
-                        <h5 class="text-[13px] font-bold tracking-tight text-white group-hover:text-blue-300 transition-all duration-300">Justine Villarosa</h5>
-                        <p class="text-[9px] text-blue-400 uppercase tracking-[0.2em] font-bold">Developer</p>
-                    </div>
-                    <div class="relative">
-                        <div class="absolute inset-0 bg-blue-500 blur-2xl opacity-0 group-hover:opacity-60 transition-all duration-700 rounded-full"></div>
-                        <img :src="logoUrl" alt="ENOT PILI Logo" class="h-28 relative z-10 drop-shadow-2xl transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"></img>
-                    </div>
-                </div>
+        <!-- Scroll Progress -->
+        <div class="scroll-indicator">
+            <div class="scroll-bar" :style="{ width: scrollProgress + '%' }"></div>
+        </div>
 
-                <div v-if="canLogin" class="flex gap-4">
+        <!-- Navigation -->
+        <nav class="portal-nav">
+            <div class="nav-wrapper">
+                <div class="nav-glass"></div>
+                <div class="nav-border"></div>
+                
+                <!-- Logo -->
+                <Link :href="route('dashboard')" class="nav-logo-link">
+                    <div class="nav-logo-wrapper">
+                        <img :src="logoUrl" alt="ENOT PILI Logo" class="nav-logo-img">
+                        <div class="nav-logo-pulse"></div>
+                    </div>
+                    <div class="nav-logo-text">
+                        <h5>Justine Villarosa</h5>
+                        <p>Developer</p>
+                    </div>
+                </Link>
+
+                <!-- Auth Buttons -->
+                <div v-if="canLogin" class="nav-actions">
                     <Link 
                         v-if="$page.props.auth.user" 
                         :href="route('dashboard')" 
-                        class="premium-button group"
+                        class="btn-dashboard"
                     >
-                        <span class="relative z-10">Enter Command Center</span>
-                        <svg class="w-4 h-4 relative z-10 group-hover:translate-x-2 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
-                        <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full"></div>
+                        <span>Dashboard</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        </svg>
                     </Link>
 
                     <template v-else>
-                        <Link 
-                            :href="route('login')" 
-                            class="px-6 py-2.5 text-slate-300 hover:text-white font-medium text-sm transition-all duration-300 hover:scale-105 relative group"
-                        >
-                            <span class="relative z-10">Sign In</span>
-                            <div class="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full"></div>
+                        <Link :href="route('login')" class="btn-login">
+                            Sign In
                         </Link>
-
-                        <Link 
-                            v-if="canRegister" 
-                            :href="route('register')" 
-                            class="premium-cta-button group"
-                        >
-                            <span class="relative z-10">Get Started</span>
-                            <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300 rounded-full"></div>
+                        <Link v-if="canRegister" :href="route('register')" class="btn-register">
+                            Get Started
                         </Link>
                     </template>
                 </div>
             </div>
         </nav>
 
-        <!-- Main Content -->
-        <main class="relative z-10 flex flex-col items-center justify-center text-center px-4 mt-16 md:mt-24 mb-32">
+        <!-- Hero Section -->
+        <main class="hero-section">
             
-            <!-- Status Badge with Enhanced Animation -->
-            <div class="status-badge group">
-                <span class="relative flex h-2 w-2">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500 shadow-lg shadow-blue-500/50"></span>
+            <!-- Status Badge -->
+            <div class="status-badge">
+                <span class="status-pulse">
+                    <span class="pulse-ring"></span>
+                    <span class="pulse-dot"></span>
                 </span>
-                <span class="text-blue-300 text-[10px] font-bold tracking-[0.25em] uppercase">Online Portal System</span>
-                <div class="absolute inset-0 bg-blue-500/10 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <span class="status-text">System Online</span>
+                <span class="status-indicator">●</span>
             </div>
 
-            <!-- Hero Title with Enhanced Typography -->
+            <!-- Hero Title -->
             <h1 class="hero-title">
-                Governance <br class="hidden md:block" />
-                <span class="hero-gradient">
-                    E-Portal System
-                </span>
+                <span class="title-line">Governance</span>
+                <span class="title-gradient">E-Portal System</span>
+                <div class="title-underline"></div>
             </h1>
 
-            <!-- Description with Better Readability -->
-            <p class="hero-description">
-                The future of public service is digital. Request documents, pay bills, and participate in governance through a secure, unified command center.
+            <!-- Description -->
+            <p class="hero-desc">
+                The future of public service is digital. Request documents, pay bills, 
+                and participate in governance through a secure, unified command center.
             </p>
 
-            <!-- CTA Buttons with Premium Effects -->
-            <div class="flex flex-col sm:flex-row gap-4 animate-slide-up" style="animation-delay: 0.2s;">
-                <Link 
-                    :href="route('register')" 
-                    class="cta-primary group"
-                >
-                    <div class="absolute inset-0 bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 opacity-100 group-hover:opacity-0 transition-opacity duration-300 rounded-full"></div>
-                    <div class="absolute inset-0 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full"></div>
-                    <span class="relative z-10">Create Citizen Account</span>
-                    <svg class="w-5 h-5 relative z-10 group-hover:translate-x-2 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+            <!-- CTA Buttons -->
+            <div class="hero-cta">
+                <Link :href="route('register')" class="cta-primary">
+                    <div class="cta-bg"></div>
+                    <span>Create Citizen Account</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                    </svg>
+                    <div class="cta-shine"></div>
                 </Link>
-                <Link 
-                    :href="route('login')" 
-                    class="cta-secondary group"
-                >
-                    <div class="absolute inset-0 bg-white/5 group-hover:bg-white/10 transition-colors duration-300 rounded-full"></div>
-                    <span class="relative z-10">Access Portal</span>
+                <Link :href="route('login')" class="cta-secondary">
+                    <div class="cta-glass"></div>
+                    <span>Access Portal</span>
+                    <div class="cta-border"></div>
                 </Link>
             </div>
 
-            <!-- Feature Cards with Premium Design -->
-            <div class="mt-32 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl animate-fade-in-up" style="animation-delay: 0.4s;">
+            <!-- Feature Cards -->
+            <div class="feature-cards">
                 
-                <div class="feature-card group">
-                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[2rem]"></div>
-                    <div class="absolute -right-10 -top-10 w-40 h-40 bg-blue-500/20 rounded-full blur-[60px] group-hover:bg-blue-500/40 transition-all duration-500"></div>
+                <div class="card" data-color="blue">
+                    <div class="card-bg"></div>
+                    <div class="card-glow"></div>
                     
-                    <div class="feature-icon bg-blue-500/20 text-blue-400 shadow-blue-500/30 group-hover:shadow-blue-500/50">
-                        📄
+                    <div class="card-icon">
+                        <span>📄</span>
+                        <div class="icon-ring"></div>
                     </div>
-                    <h3 class="text-xl font-bold mb-3 text-white group-hover:text-blue-300 transition-colors duration-300">E-Documents</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">Instant request processing for Barangay Clearances and Permits with digital QR verification.</p>
                     
-                    <div class="mt-6 flex items-center gap-2 text-blue-400 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                        <span class="text-xs font-semibold">Learn More</span>
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                    </div>
-                </div>
-
-                <div class="feature-card group">
-                    <div class="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[2rem]"></div>
-                    <div class="absolute -right-10 -top-10 w-40 h-40 bg-red-500/20 rounded-full blur-[60px] group-hover:bg-red-500/40 transition-all duration-500"></div>
+                    <h3 class="card-title">E-Documents</h3>
+                    <p class="card-desc">
+                        Instant request processing for Barangay Clearances and Permits with digital QR verification.
+                    </p>
                     
-                    <div class="feature-icon bg-red-500/20 text-red-400 shadow-red-500/30 group-hover:shadow-red-500/50">
-                        🚨
-                    </div>
-                    <h3 class="text-xl font-bold mb-3 text-white group-hover:text-red-300 transition-colors duration-300">Rapid Response</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">Direct line to emergency services. Report community incidents with geo-tagging.</p>
-                    
-                    <div class="mt-6 flex items-center gap-2 text-red-400 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                        <span class="text-xs font-semibold">Learn More</span>
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    <div class="card-link">
+                        <span>Learn More</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
                     </div>
                 </div>
 
-                <div class="feature-card group">
-                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[2rem]"></div>
-                    <div class="absolute -right-10 -top-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-[60px] group-hover:bg-emerald-500/40 transition-all duration-500"></div>
+                <div class="card" data-color="red">
+                    <div class="card-bg"></div>
+                    <div class="card-glow"></div>
                     
-                    <div class="feature-icon bg-emerald-500/20 text-emerald-400 shadow-emerald-500/30 group-hover:shadow-emerald-500/50">
-                        💳
+                    <div class="card-icon">
+                        <span>🚨</span>
+                        <div class="icon-ring"></div>
                     </div>
-                    <h3 class="text-xl font-bold mb-3 text-white group-hover:text-emerald-300 transition-colors duration-300">Secure Payments</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">Hassle-free payment for utilities and taxes through our encrypted virtual gateway.</p>
                     
-                    <div class="mt-6 flex items-center gap-2 text-emerald-400 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                        <span class="text-xs font-semibold">Learn More</span>
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    <h3 class="card-title">Rapid Response</h3>
+                    <p class="card-desc">
+                        Direct line to emergency services. Report community incidents with geo-tagging.
+                    </p>
+                    
+                    <div class="card-link">
+                        <span>Learn More</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="card" data-color="emerald">
+                    <div class="card-bg"></div>
+                    <div class="card-glow"></div>
+                    
+                    <div class="card-icon">
+                        <span>💳</span>
+                        <div class="icon-ring"></div>
+                    </div>
+                    
+                    <h3 class="card-title">Secure Payments</h3>
+                    <p class="card-desc">
+                        Hassle-free payment for utilities and taxes through our encrypted virtual gateway.
+                    </p>
+                    
+                    <div class="card-link">
+                        <span>Learn More</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
                     </div>
                 </div>
 
@@ -434,25 +465,16 @@ const currentFeatureData = computed(() => cinematicFeatures[currentFeature.value
 
         </main>
 
-        <!-- Enhanced Footer -->
-        <footer class="relative z-10 border-t border-white/10 bg-black/80 backdrop-blur-xl">
-            <div class="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
-                <div class="text-slate-500 text-sm font-medium">
-                    &copy; 2025 Provincial Government of Camarines Sur.
+        <!-- Footer -->
+        <footer class="portal-footer">
+            <div class="footer-content">
+                <div class="footer-copyright">
+                    <span>&copy; 2025 Provincial Government of Camarines Sur.</span>
                 </div>
-                <div class="flex gap-8 text-sm font-medium">
-                    <a href="#" class="text-slate-500 hover:text-white transition-all duration-300 relative group">
-                        <span class="relative z-10">Privacy</span>
-                        <span class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
-                    </a>
-                    <a href="#" class="text-slate-500 hover:text-white transition-all duration-300 relative group">
-                        <span class="relative z-10">Terms</span>
-                        <span class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
-                    </a>
-                    <a href="#" class="text-slate-500 hover:text-white transition-all duration-300 relative group">
-                        <span class="relative z-10">Support</span>
-                        <span class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
-                    </a>
+                <div class="footer-links">
+                    <a href="#" class="footer-link">Privacy</a>
+                    <a href="#" class="footer-link">Terms</a>
+                    <a href="#" class="footer-link">Support</a>
                 </div>
             </div>
         </footer>
@@ -461,7 +483,355 @@ const currentFeatureData = computed(() => cinematicFeatures[currentFeature.value
 </template>
 
 <style scoped>
-/* ===== CINEMATIC INTRO STYLES ===== */
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+* {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* ===== CINEMATIC INTRO ===== */
+.intro-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    will-change: opacity;
+}
+
+.intro-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.intro-gradient {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #0f0f1e 50%, #000 100%);
+}
+
+.intro-particles {
+    position: absolute;
+    inset: 0;
+    opacity: 0.4;
+}
+
+.particle {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    animation: particle-float 7s ease-in-out infinite;
+    will-change: transform, opacity;
+}
+
+@keyframes particle-float {
+    0%, 100% { 
+        transform: translate(0, 0) scale(1); 
+        opacity: 0.2;
+    }
+    50% { 
+        transform: translate(50px, -100px) scale(1.5); 
+        opacity: 0.8;
+    }
+}
+
+.light-rays {
+    position: absolute;
+    inset: 0;
+    opacity: 0.15;
+}
+
+.ray {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.6), transparent);
+    filter: blur(20px);
+    animation: ray-pulse 4s ease-in-out infinite;
+}
+
+@keyframes ray-pulse {
+    0%, 100% { opacity: 0.3; transform: translateY(0); }
+    50% { opacity: 0.8; transform: translateY(20px); }
+}
+
+.skip-btn {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.skip-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(4px);
+    box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+}
+
+.intro-content {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 1200px;
+    padding: 0 2rem;
+}
+
+/* Logo Phase */
+.intro-logo-phase {
+    text-align: center;
+}
+
+.logo-container {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 3rem;
+}
+
+.logo-glow {
+    position: absolute;
+    inset: -3rem;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.4), transparent 70%);
+    animation: glow-pulse 3s ease-in-out infinite;
+    filter: blur(60px);
+}
+
+@keyframes glow-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.2); }
+}
+
+.logo-img {
+    position: relative;
+    height: 16rem;
+    width: auto;
+    filter: drop-shadow(0 20px 60px rgba(59, 130, 246, 0.6));
+    animation: logo-float 4s ease-in-out infinite;
+}
+
+@keyframes logo-float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(2deg); }
+}
+
+.logo-rings {
+    position: absolute;
+    inset: -2rem;
+}
+
+.ring {
+    position: absolute;
+    inset: 0;
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    border-radius: 50%;
+    animation: ring-expand 3s ease-out infinite;
+}
+
+@keyframes ring-expand {
+    0% { transform: scale(0.8); opacity: 0.8; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+.logo-title {
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 900;
+    color: white;
+    letter-spacing: -0.02em;
+    text-shadow: 0 0 60px rgba(59, 130, 246, 0.8);
+}
+
+/* Tagline Phase */
+.tagline-phase {
+    text-align: center;
+}
+
+.tagline-main {
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    font-weight: 900;
+    color: white;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+}
+
+.tagline-gradient {
+    display: block;
+    margin-top: 0.5rem;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa, #06b6d4);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient-flow 8s linear infinite;
+}
+
+@keyframes gradient-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.tagline-sub {
+    font-size: clamp(1.125rem, 2vw, 1.5rem);
+    color: rgb(156, 163, 175);
+    font-weight: 300;
+    margin-bottom: 2rem;
+}
+
+.tagline-line {
+    width: 8rem;
+    height: 3px;
+    margin: 0 auto;
+    background: linear-gradient(to right, transparent, #60a5fa, transparent);
+    animation: line-glow 2s ease-in-out infinite;
+}
+
+@keyframes line-glow {
+    0%, 100% { opacity: 0.5; transform: scaleX(1); }
+    50% { opacity: 1; transform: scaleX(1.2); }
+}
+
+/* Features Phase */
+.features-phase {
+    text-align: center;
+}
+
+.feature-showcase {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+}
+
+.feature-icon-wrapper {
+    position: relative;
+    width: 12rem;
+    height: 12rem;
+}
+
+.feature-glow {
+    position: absolute;
+    inset: -3rem;
+    border-radius: 50%;
+    opacity: 0.4;
+    filter: blur(80px);
+    animation: feature-glow 3s ease-in-out infinite;
+}
+
+@keyframes feature-glow {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.3); }
+}
+
+.feature-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 6rem;
+    filter: drop-shadow(0 10px 40px rgba(59, 130, 246, 0.6));
+    animation: icon-bounce 2s ease-in-out infinite;
+}
+
+@keyframes icon-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+.feature-particles {
+    position: absolute;
+    inset: 0;
+}
+
+.feature-particle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 1.5rem;
+    opacity: 0;
+    animation: particle-burst 2s ease-out infinite;
+}
+
+.feature-particle:nth-child(1) { transform: rotate(0deg); }
+.feature-particle:nth-child(2) { transform: rotate(45deg); }
+.feature-particle:nth-child(3) { transform: rotate(90deg); }
+.feature-particle:nth-child(4) { transform: rotate(135deg); }
+.feature-particle:nth-child(5) { transform: rotate(180deg); }
+.feature-particle:nth-child(6) { transform: rotate(225deg); }
+.feature-particle:nth-child(7) { transform: rotate(270deg); }
+.feature-particle:nth-child(8) { transform: rotate(315deg); }
+
+@keyframes particle-burst {
+    0% { 
+        transform: translate(-50%, -50%) translateY(0);
+        opacity: 0;
+    }
+    50% { 
+        opacity: 1;
+    }
+    100% { 
+        transform: translate(-50%, -50%) translateY(-100px);
+        opacity: 0;
+    }
+}
+
+.feature-content {
+    max-width: 48rem;
+}
+
+.feature-subtitle {
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 1rem;
+}
+
+.feature-title {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 900;
+    color: white;
+    margin-bottom: 1rem;
+}
+
+.feature-desc {
+    font-size: clamp(1.125rem, 2vw, 1.5rem);
+    color: rgb(156, 163, 175);
+    font-weight: 300;
+}
+
+.feature-progress {
+    display: flex;
+    gap: 0.75rem;
+    padding-top: 2rem;
+}
+
+.progress-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.2);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-dot.active {
+    width: 3rem;
+}
 
 /* Intro Transitions */
 .intro-fade-enter-active,
@@ -474,12 +844,9 @@ const currentFeatureData = computed(() => cinematicFeatures[currentFeature.value
     opacity: 0;
 }
 
-.fade-scale-enter-active {
-    transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
+.fade-scale-enter-active,
 .fade-scale-leave-active {
-    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .fade-scale-enter-from {
@@ -492,231 +859,888 @@ const currentFeatureData = computed(() => cinematicFeatures[currentFeature.value
     transform: scale(1.2);
 }
 
-.slide-up-fade-enter-active {
+.slide-up-enter-active {
     transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
     transition-delay: 0.5s;
 }
 
-.slide-up-fade-enter-from {
+.slide-up-enter-from {
     opacity: 0;
     transform: translateY(40px);
 }
 
-.fade-in-delayed {
-    animation: fadeIn 1s ease-out 1s both;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* Feature Transition */
-.feature-transition-enter-active {
+.feature-enter-active,
+.feature-leave-active {
     transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.feature-transition-leave-active {
-    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.feature-transition-enter-from {
+.feature-enter-from {
     opacity: 0;
     transform: translateY(50px) scale(0.9);
 }
 
-.feature-transition-leave-to {
+.feature-leave-to {
     opacity: 0;
     transform: translateY(-50px) scale(1.1);
 }
 
-/* Cinematic Animations */
-@keyframes float-slow {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-30px) rotate(5deg); }
+/* ===== PORTAL CONTAINER ===== */
+.portal-container {
+    position: relative;
+    min-height: 100vh;
+    background: #000;
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
 }
 
-.animate-float-slow {
-    animation: float-slow 6s ease-in-out infinite;
+/* Enhanced Background */
+.portal-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
 }
 
-@keyframes feature-float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
+.bg-base {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top, #0a0a0f 0%, #050507 50%, #000 100%);
 }
 
-.animate-feature-float {
-    animation: feature-float 3s ease-in-out infinite;
+.bg-gradients {
+    position: absolute;
+    inset: 0;
 }
 
-@keyframes pulse-glow {
-    0%, 100% { opacity: 0.3; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(1.2); }
+.gradient {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(140px);
+    will-change: transform;
+    animation: gradient-float 30s ease-in-out infinite;
 }
 
-.animate-pulse-glow {
-    animation: pulse-glow 3s ease-in-out infinite;
+.gradient-1 {
+    top: 10%;
+    left: 15%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.15), transparent 70%);
 }
 
-.cinematic-particle {
-    animation: particle-drift 7s ease-in-out infinite;
+.gradient-2 {
+    bottom: 10%;
+    right: 15%;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.12), transparent 70%);
+    animation-delay: 5s;
 }
 
-@keyframes particle-drift {
-    0%, 100% { 
-        transform: translate(0, 0); 
-        opacity: 0.1;
+.gradient-3 {
+    top: 50%;
+    left: 50%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.1), transparent 70%);
+    animation-delay: 10s;
+}
+
+@keyframes gradient-float {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(50px, -50px); }
+    66% { transform: translate(-50px, 50px); }
+}
+
+.bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    mask-image: radial-gradient(ellipse at center, black 20%, transparent 80%);
+}
+
+.bg-noise {
+    position: absolute;
+    inset: 0;
+    background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="3.5" numOctaves="4"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23n)" opacity="0.05"/%3E%3C/svg%3E');
+    opacity: 0.03;
+    mix-blend-mode: overlay;
+}
+
+/* Scroll Indicator */
+.scroll-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.scroll-bar {
+    height: 100%;
+    background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+    transition: width 0.1s ease-out;
+}
+
+/* Navigation */
+.portal-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    padding: 1.5rem;
+}
+
+.nav-wrapper {
+    position: relative;
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-radius: 9999px;
+    background: rgba(10, 10, 15, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(40px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-wrapper:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.9);
+}
+
+.nav-glass {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+}
+
+.nav-border {
+    position: absolute;
+    inset: -1px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(168, 85, 247, 0.2));
+    filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: -1;
+}
+
+.nav-wrapper:hover .nav-border {
+    opacity: 1;
+}
+
+.nav-logo-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.3s;
+}
+
+.nav-logo-link:hover {
+    transform: scale(1.05);
+}
+
+.nav-logo-wrapper {
+    position: relative;
+    width: 4.5rem;
+    height: 4.5rem;
+}
+
+.nav-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 30px rgba(59, 130, 246, 0.4));
+    transition: filter 0.3s;
+}
+
+.nav-logo-link:hover .nav-logo-img {
+    filter: drop-shadow(0 15px 40px rgba(59, 130, 246, 0.6));
+}
+
+.nav-logo-pulse {
+    position: absolute;
+    inset: -0.5rem;
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    border-radius: 9999px;
+    opacity: 0;
+    animation: pulse-ring 2s ease-out infinite;
+}
+
+.nav-logo-link:hover .nav-logo-pulse {
+    opacity: 1;
+}
+
+@keyframes pulse-ring {
+    0% { transform: scale(0.8); opacity: 0.8; }
+    100% { transform: scale(1.3); opacity: 0; }
+}
+
+.nav-logo-text {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .nav-logo-text {
+        display: block;
     }
-    50% { 
-        transform: translate(50px, -100px); 
-        opacity: 0.6;
+    
+    .nav-logo-text h5 {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: white;
+        transition: color 0.3s;
+    }
+    
+    .nav-logo-text p {
+        font-size: 0.75rem;
+        color: #60a5fa;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 700;
+    }
+    
+    .nav-logo-link:hover .nav-logo-text h5 {
+        color: #60a5fa;
     }
 }
 
-@keyframes gradient-shift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+.nav-actions {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
-.animate-gradient-shift {
-    background-size: 200% auto;
-    animation: gradient-shift 5s ease infinite;
+.btn-dashboard,
+.btn-login,
+.btn-register {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
 }
 
-/* ===== EXISTING PORTAL STYLES ===== */
-
-/* Premium Navigation Glow */
-.nav-glow {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.1);
-    transition: all 0.3s ease;
+.btn-dashboard {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
 }
 
-.nav-glow:hover {
-    box-shadow: 0 0 60px rgba(59, 130, 246, 0.2);
+.btn-dashboard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px rgba(59, 130, 246, 0.6);
 }
 
-/* Status Badge */
+.btn-login {
+    color: rgb(203, 213, 225);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-login:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.btn-register {
+    background: white;
+    color: black;
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
+}
+
+.btn-register:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px rgba(255, 255, 255, 0.3);
+}
+
+/* Hero Section */
+.hero-section {
+    position: relative;
+    z-index: 10;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8rem 1.5rem 4rem;
+    text-align: center;
+}
+
 .status-badge {
-    @apply inline-flex items-center gap-2 px-5 py-2 rounded-full;
-    @apply bg-blue-500/10 border border-blue-500/30 backdrop-blur-md mb-8;
-    @apply animate-fade-in shadow-lg shadow-blue-500/20;
-    @apply relative transition-all duration-300 hover:scale-105;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    margin-bottom: 2rem;
+    background: rgba(59, 130, 246, 0.08);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 9999px;
+    box-shadow: 0 10px 40px rgba(59, 130, 246, 0.2);
+    animation: badge-float 3s ease-in-out infinite;
 }
 
-/* Hero Title */
+@keyframes badge-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.status-pulse {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pulse-ring {
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: #60a5fa;
+    animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+    0% { transform: scale(0.8); opacity: 1; }
+    80%, 100% { transform: scale(2.5); opacity: 0; }
+}
+
+.pulse-dot {
+    position: relative;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #60a5fa;
+    box-shadow: 0 0 15px rgba(96, 165, 250, 0.8);
+}
+
+.status-text {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #93c5fd;
+}
+
+.status-indicator {
+    color: #22c55e;
+    font-size: 0.875rem;
+}
+
 .hero-title {
-    @apply text-5xl md:text-8xl font-black tracking-tighter mb-6 max-w-5xl leading-tight;
-    @apply animate-slide-up drop-shadow-2xl;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
 }
 
-.hero-gradient {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400;
+.title-line {
+    font-size: clamp(3rem, 8vw, 7rem);
+    font-weight: 900;
+    color: white;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.title-gradient {
+    font-size: clamp(3rem, 8vw, 7rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa, #06b6d4);
     background-size: 200% auto;
-    animation: gradient-shift 8s ease infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    animation: gradient-flow 8s linear infinite;
 }
 
-/* Hero Description */
-.hero-description {
-    @apply text-lg md:text-xl text-slate-400 max-w-2xl mb-12 leading-relaxed;
-    @apply animate-slide-up font-light;
-    animation-delay: 0.1s;
+.title-underline {
+    width: 8rem;
+    height: 4px;
+    margin: 1rem auto 0;
+    background: linear-gradient(to right, transparent, #60a5fa, transparent);
+    border-radius: 9999px;
+    animation: underline-glow 2s ease-in-out infinite;
 }
 
-/* Premium Buttons */
-.premium-button {
-    @apply relative px-6 py-2.5 bg-white/10 backdrop-blur-md border border-white/10;
-    @apply rounded-full font-bold text-sm transition-all flex items-center gap-2;
-    @apply hover:scale-105 hover:shadow-xl hover:shadow-blue-500/20 overflow-hidden;
+@keyframes underline-glow {
+    0%, 100% { opacity: 0.5; transform: scaleX(1); }
+    50% { opacity: 1; transform: scaleX(1.2); }
 }
 
-.premium-cta-button {
-    @apply relative px-6 py-2.5 bg-white text-black rounded-full font-bold text-sm;
-    @apply shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all;
-    @apply hover:scale-110 hover:shadow-[0_0_40px_rgba(255,255,255,0.5)] overflow-hidden;
+.hero-desc {
+    max-width: 48rem;
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    color: rgb(156, 163, 175);
+    font-weight: 300;
+    line-height: 1.7;
+    margin-bottom: 3rem;
 }
 
-/* CTA Buttons */
+.hero-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 5rem;
+}
+
+.cta-primary,
+.cta-secondary {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 2rem;
+    border-radius: 9999px;
+    font-size: 1.125rem;
+    font-weight: 700;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
 .cta-primary {
-    @apply relative px-8 py-4 text-white rounded-full font-bold text-lg;
-    @apply shadow-[0_0_40px_rgba(37,99,235,0.5)] transition-all;
-    @apply hover:-translate-y-2 hover:shadow-[0_0_60px_rgba(37,99,235,0.7)];
-    @apply flex items-center justify-center gap-2 overflow-hidden;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+    box-shadow: 0 20px 60px rgba(59, 130, 246, 0.4);
+}
+
+.cta-primary:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 25px 80px rgba(59, 130, 246, 0.6);
+}
+
+.cta-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #6366f1, #ec4899);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.cta-primary:hover .cta-bg {
+    opacity: 1;
+}
+
+.cta-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.6s;
+}
+
+.cta-primary:hover .cta-shine {
+    left: 100%;
 }
 
 .cta-secondary {
-    @apply relative px-8 py-4 backdrop-blur-xl border border-white/10 text-white rounded-full;
-    @apply font-bold text-lg transition-all overflow-hidden;
-    @apply hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)];
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cta-glass {
+    position: absolute;
+    inset: 0;
+    backdrop-filter: blur(20px);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.cta-secondary:hover .cta-glass {
+    opacity: 1;
+}
+
+.cta-border {
+    position: absolute;
+    inset: -2px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(168, 85, 247, 0.5));
+    filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: -1;
+}
+
+.cta-secondary:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cta-secondary:hover .cta-border {
+    opacity: 1;
 }
 
 /* Feature Cards */
-.feature-card {
-    @apply relative bg-white/5 backdrop-blur-xl border border-white/10;
-    @apply p-8 rounded-[2rem] transition-all duration-500;
-    @apply hover:bg-white/10 hover:-translate-y-3 hover:shadow-2xl overflow-hidden;
+.feature-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    max-width: 1200px;
+    width: 100%;
 }
 
-.feature-icon {
-    @apply text-4xl mb-6 w-16 h-16 rounded-2xl flex items-center justify-center;
-    @apply group-hover:scale-110 transition-all duration-500 shadow-lg;
-}
-
-/* Floating Animations */
-@keyframes float {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-20px) rotate(5deg); }
-}
-.animate-float { animation: float 8s ease-in-out infinite; }
-
-@keyframes float-delayed {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-30px) rotate(-5deg); }
-}
-.animate-float-delayed { animation: float-delayed 10s ease-in-out infinite; }
-
-/* Pulse Animation */
-@keyframes pulse-slow {
-    0%, 100% { opacity: 0.3; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(1.1); }
-}
-.animate-pulse-slow { animation: pulse-slow 8s ease-in-out infinite; }
-
-/* Fade In Animations */
-@keyframes slide-up {
-    from { opacity: 0; transform: translateY(40px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.animate-slide-up { animation: slide-up 1s cubic-bezier(0.16, 1, 0.3, 1) both; }
-
-.animate-fade-in { animation: slide-up 1s ease-out; }
-.animate-fade-in-up { animation: slide-up 1s ease-out both; }
-
-/* Starfield Animation */
-@keyframes starfield {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(-100px); }
-}
-.animate-starfield { animation: starfield 200s linear infinite; }
-
-/* Particle Animation */
-.particle {
-    animation: particle-float 15s ease-in-out infinite;
-}
-
-@keyframes particle-float {
-    0%, 100% { 
-        transform: translate(0, 0) scale(1); 
-        opacity: 0.2;
-    }
-    50% { 
-        transform: translate(50px, -50px) scale(1.5); 
-        opacity: 0.8;
+@media (min-width: 768px) {
+    .feature-cards {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
-/* Smooth Scrolling */
-html {
-    scroll-behavior: smooth;
+@media (min-width: 1024px) {
+    .feature-cards {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.card {
+    position: relative;
+    padding: 2rem;
+    border-radius: 2rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.card-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+
+.card[data-color="blue"] .card-bg {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), transparent);
+}
+
+.card[data-color="red"] .card-bg {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
+}
+
+.card[data-color="emerald"] .card-bg {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent);
+}
+
+.card:hover .card-bg {
+    opacity: 1;
+}
+
+.card-glow {
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    border-radius: 50%;
+    opacity: 0;
+    filter: blur(80px);
+    transition: opacity 0.4s;
+}
+
+.card[data-color="blue"] .card-glow {
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.3), transparent 70%);
+}
+
+.card[data-color="red"] .card-glow {
+    background: radial-gradient(circle, rgba(239, 68, 68, 0.3), transparent 70%);
+}
+
+.card[data-color="emerald"] .card-glow {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.3), transparent 70%);
+}
+
+.card:hover .card-glow {
+    opacity: 1;
+}
+
+.card-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 1.5rem;
+    border-radius: 1.25rem;
+    font-size: 2rem;
+    transition: transform 0.4s;
+}
+
+.card[data-color="blue"] .card-icon {
+    background: rgba(59, 130, 246, 0.15);
+    box-shadow: 0 10px 40px rgba(59, 130, 246, 0.2);
+}
+
+.card[data-color="red"] .card-icon {
+    background: rgba(239, 68, 68, 0.15);
+    box-shadow: 0 10px 40px rgba(239, 68, 68, 0.2);
+}
+
+.card[data-color="emerald"] .card-icon {
+    background: rgba(16, 185, 129, 0.15);
+    box-shadow: 0 10px 40px rgba(16, 185, 129, 0.2);
+}
+
+.card:hover .card-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.icon-ring {
+    position: absolute;
+    inset: -0.5rem;
+    border: 2px solid currentColor;
+    border-radius: 1.5rem;
+    opacity: 0;
+    animation: ring-pulse 2s ease-out infinite;
+}
+
+.card[data-color="blue"] .icon-ring {
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.card[data-color="red"] .icon-ring {
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.card[data-color="emerald"] .icon-ring {
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+.card:hover .icon-ring {
+    opacity: 1;
+}
+
+@keyframes ring-pulse {
+    0% { transform: scale(0.9); opacity: 0.8; }
+    100% { transform: scale(1.3); opacity: 0; }
+}
+
+.card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.75rem;
+    transition: color 0.3s;
+}
+
+.card[data-color="blue"]:hover .card-title {
+    color: #60a5fa;
+}
+
+.card[data-color="red"]:hover .card-title {
+    color: #f87171;
+}
+
+.card[data-color="emerald"]:hover .card-title {
+    color: #34d399;
+}
+
+.card-desc {
+    font-size: 0.9375rem;
+    color: rgb(156, 163, 175);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card[data-color="blue"] .card-link {
+    color: #60a5fa;
+}
+
+.card[data-color="red"] .card-link {
+    color: #f87171;
+}
+
+.card[data-color="emerald"] .card-link {
+    color: #34d399;
+}
+
+.card:hover .card-link {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.card-link svg {
+    transition: transform 0.3s;
+}
+
+.card-link:hover svg {
+    transform: translateX(4px);
+}
+
+/* Footer */
+.portal-footer {
+    position: relative;
+    z-index: 10;
+    padding: 3rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+@media (min-width: 768px) {
+    .footer-content {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+}
+
+.footer-copyright {
+    font-size: 0.875rem;
+    color: rgb(100, 116, 139);
+}
+
+.footer-links {
+    display: flex;
+    gap: 2rem;
+}
+
+.footer-link {
+    position: relative;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgb(148, 163, 184);
+    transition: color 0.3s;
+}
+
+.footer-link::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(to right, #60a5fa, #a78bfa);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.footer-link:hover {
+    color: white;
+}
+
+.footer-link:hover::after {
+    width: 100%;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 640px) {
+    .skip-btn {
+        top: 1rem;
+        right: 1rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.75rem;
+    }
+    
+    .nav-wrapper {
+        padding: 0.75rem 1rem;
+    }
+    
+    .nav-logo-wrapper {
+        width: 3.5rem;
+        height: 3.5rem;
+    }
+    
+    .btn-dashboard,
+    .btn-login,
+    .btn-register {
+        padding: 0.5rem 1rem;
+        font-size: 0.8125rem;
+    }
+    
+    .hero-section {
+        padding: 6rem 1rem 3rem;
+    }
+    
+    .hero-cta {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .cta-primary,
+    .cta-secondary {
+        width: 100%;
+        justify-content: center;
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+    }
+}
+
+/* Performance: Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Print styles */
+@media print {
+    .intro-overlay,
+    .portal-nav,
+    .scroll-indicator {
+        display: none !important;
+    }
+    
+    .portal-container {
+        background: white;
+        color: black;
+    }
 }
 </style>

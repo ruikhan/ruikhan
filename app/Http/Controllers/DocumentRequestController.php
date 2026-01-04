@@ -49,11 +49,14 @@ class DocumentRequestController extends Controller
     // =========================================================================
     // 2. THE ENGINE: Dynamic Form Configuration
     // =========================================================================
-    public function create($department = null)
+    public function create(Request $request, $department = null)
     {
         if (!$department) {
             return redirect()->route('services.index'); 
         }
+
+        // ✅ NEW: Capture barangay from query string
+        $selectedBarangay = $request->query('barangay');
 
         $specs = $this->getServiceSpecifications();
         $config = $specs[$department] ?? [
@@ -84,6 +87,19 @@ class DocumentRequestController extends Controller
                 // Get profile status (needs attention?)
                 $profileStatus = $this->profileService->needsAttention($userId);
             }
+
+            // ✅ NEW: If barangay was selected and no existing profile, pre-fill it
+            if ($selectedBarangay && !$isReturningUser) {
+                $existingProfile = [
+                    'barangay' => $selectedBarangay,
+                    'municipality' => 'Pili',
+                    'province' => 'Camarines Sur'
+                ];
+            }
+            // ✅ NEW: If barangay was selected and user has profile, update the barangay
+            elseif ($selectedBarangay && $isReturningUser && $existingProfile) {
+                $existingProfile['barangay'] = $selectedBarangay;
+            }
         }
 
         return Inertia::render('Services/Create', [
@@ -91,82 +107,83 @@ class DocumentRequestController extends Controller
             'config' => $config,
             'isReturningUser' => $isReturningUser,
             'existingProfile' => $existingProfile,
-            'profileStatus' => $profileStatus
+            'profileStatus' => $profileStatus,
+            'selectedBarangay' => $selectedBarangay, // ✅ NEW: Pass to frontend
         ]); 
     }
 
     // =========================================================================
     // 3. THE HANDLER: Storing Dynamic Data
     // =========================================================================
-public function store(Request $request)
-{
-    $request->validate([
-        'department' => 'required|string',
-        'document_type' => 'required|string',
-        'data' => 'required|array',
-        'remarks' => 'nullable|string',
-        'attachments' => 'nullable|array',
-        'attachments.*' => 'file|max:10240',
-        'use_existing_profile' => 'nullable|boolean',
-        'signature_data' => 'nullable|string',
-    ]);
+    public function store(Request $request)
+    {
+        $request->validate([
+            'department' => 'required|string',
+            'document_type' => 'required|string',
+            'data' => 'required|array',
+            'remarks' => 'nullable|string',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240',
+            'use_existing_profile' => 'nullable|boolean',
+            'signature_data' => 'nullable|string',
+        ]);
 
-    $user = $request->user();
-    $attachmentsPaths = [];
-    $formData = $request->data;
-    $isQuickSubmit = $request->use_existing_profile ?? false;
+        $user = $request->user();
+        $attachmentsPaths = [];
+        $formData = $request->data;
+        $isQuickSubmit = $request->use_existing_profile ?? false;
 
-    // ✅ IMPROVED: Use ProfileService to handle profile logic
-    if ($request->department === 'Barangay Certifications') {
-        if ($isQuickSubmit) {
-            // Merge stored profile with new request-specific data
-            $formData = $this->profileService->mergeProfileWithRequest($user->id, $formData);
+        // ✅ IMPROVED: Use ProfileService to handle profile logic
+        if ($request->department === 'Barangay Certifications') {
+            if ($isQuickSubmit) {
+                // Merge stored profile with new request-specific data
+                $formData = $this->profileService->mergeProfileWithRequest($user->id, $formData);
+            } else {
+                // Create or update profile from full form submission
+                $this->profileService->createOrUpdateProfile($user->id, $formData, false);
+            }
+        }
+
+        // Handle file uploads
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $attachmentsPaths[] = $file->store('documents/' . $user->id, 'public');
+            }
+        }
+
+        // Store signature if provided
+        if ($request->signature_data) {
+            $formData['signature'] = $request->signature_data;
+            $formData['signature_timestamp'] = now()->toDateTimeString();
+            $formData['submission_method'] = 'quick_submit';
         } else {
-            // Create or update profile from full form submission
-            $this->profileService->createOrUpdateProfile($user->id, $formData, false);
+            $formData['submission_method'] = 'full_form';
         }
-    }
 
-    // Handle file uploads
-    if ($request->hasFile('attachments')) {
-        foreach ($request->file('attachments') as $file) {
-            $attachmentsPaths[] = $file->store('documents/' . $user->id, 'public');
+        // Generate Smart Tracking Code
+        $deptPrefix = $this->getDepartmentPrefix($request->department);
+        $trackingCode = $deptPrefix . '-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4));
+
+        // ✅ FIXED: Convert empty array to null for cleaner database
+        $newRequest = DocumentRequest::create([
+            'user_id' => $user->id,
+            'tracking_code' => $trackingCode,
+            'department' => $request->department,
+            'document_type' => $request->document_type, 
+            'data' => $formData,
+            'attachments' => !empty($attachmentsPaths) ? $attachmentsPaths : null,
+            'status' => 'pending',
+            'user_remarks' => $request->remarks, 
+        ]);
+
+        // Mark profile as used (if quick submit)
+        if ($isQuickSubmit && $request->department === 'Barangay Certifications') {
+            $this->profileService->getProfile($user->id)?->markAsUsed();
         }
+
+        return redirect()->route('request.story', $newRequest->id)
+            ->with('success', 'Application submitted! Tracking initialized.');
     }
-
-    // Store signature if provided
-    if ($request->signature_data) {
-        $formData['signature'] = $request->signature_data;
-        $formData['signature_timestamp'] = now()->toDateTimeString();
-        $formData['submission_method'] = 'quick_submit';
-    } else {
-        $formData['submission_method'] = 'full_form';
-    }
-
-    // Generate Smart Tracking Code
-    $deptPrefix = $this->getDepartmentPrefix($request->department);
-    $trackingCode = $deptPrefix . '-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4));
-
-    // ✅ FIXED: Convert empty array to null for cleaner database
-    $newRequest = DocumentRequest::create([
-        'user_id' => $user->id,
-        'tracking_code' => $trackingCode,
-        'department' => $request->department,
-        'document_type' => $request->document_type, 
-        'data' => $formData,
-        'attachments' => !empty($attachmentsPaths) ? $attachmentsPaths : null,  // ✅ FIXED
-        'status' => 'pending',
-        'user_remarks' => $request->remarks, 
-    ]);
-
-    // Mark profile as used (if quick submit)
-    if ($isQuickSubmit && $request->department === 'Barangay Certifications') {
-        $this->profileService->getProfile($user->id)?->markAsUsed();
-    }
-
-    return redirect()->route('request.story', $newRequest->id)
-        ->with('success', 'Application submitted! Tracking initialized.');
-}
 
     // =========================================================================
     // 4. PROFILE MANAGEMENT ENDPOINTS
@@ -289,7 +306,6 @@ public function store(Request $request)
                 ]
             ],
 
-            // 2. ASSESSOR'S OFFICE
             'Assessor’s Office' => [
                 'title' => 'Assessor’s Office',
                 'description' => 'Community Tax Certificate (Cedula) and Assessment.',
@@ -307,7 +323,6 @@ public function store(Request $request)
                 ]
             ],
 
-            // 3. MPDO (Planning)
             'MPDO' => [
                 'title' => 'Planning & Development (MPDO)',
                 'description' => 'Zoning Clearances and Development Planning.',
@@ -321,7 +336,6 @@ public function store(Request $request)
                 ]
             ],
 
-            // 4. HEALTH OFFICE
             'Municipal Health Office' => [
                 'title' => 'Health & Sanitation',
                 'description' => 'Health Certificates and Medical Services.',
@@ -335,7 +349,6 @@ public function store(Request $request)
                 ]
             ],
 
-            // 5. MSWDO (Social Welfare)
             'Social Welfare (MSWDO)' => [
                 'title' => 'Social Welfare Services',
                 'description' => 'Indigency Certificates and Social Assistance.',
@@ -349,7 +362,6 @@ public function store(Request $request)
                 ]
             ],
 
-            // 6. BPLO (Business Permits)
             'Business Permits (BPLO)' => [
                 'title' => 'Business Licensing Office',
                 'description' => 'Business Permits and Mayor’s Permits.',
@@ -358,7 +370,7 @@ public function store(Request $request)
                 'fields' => [
                     ['name' => 'business_name', 'label' => 'Business Trade Name', 'type' => 'text'],
                     ['name' => 'business_address', 'label' => 'Business Address', 'type' => 'text'],
-                    ['name' => 'owner_name', 'label' => 'Owner’s Name', 'type' => 'text'],
+                    ['name' => 'owner_name', 'label' => 'Owne’s Name', 'type' => 'text'],
                     ['name' => 'tin', 'label' => 'Tax Identification Number (TIN)', 'type' => 'text'],
                     ['name' => 'business_type', 'label' => 'Type of Business', 'type' => 'select', 'options' => ['Sole Proprietorship', 'Partnership', 'Corporation', 'Cooperative']],
                     ['name' => 'line_of_business', 'label' => 'Nature/Line of Business', 'type' => 'text'],
@@ -369,7 +381,6 @@ public function store(Request $request)
                 ]
             ],
 
-            // 7. ENGINEERING
             'Engineering Office' => [
                 'title' => 'Engineering Office',
                 'description' => 'Building Permits and Infrastructure Supervision.',
@@ -385,7 +396,6 @@ public function store(Request $request)
                 ]
             ],
 
-            // 8. AGRICULTURE
             'Agriculture Office' => [
                 'title' => 'Municipal Agriculture Office',
                 'description' => 'Farm Support, Seeds, and Input Distribution.',
@@ -400,7 +410,6 @@ public function store(Request $request)
                 ]
             ],
 
-            // 9. MDRRMO (Disaster)
             'MDRRMO' => [
                 'title' => 'Disaster Risk Reduction (MDRRMO)',
                 'description' => 'Emergency Response and Incident Reporting.',
@@ -414,7 +423,6 @@ public function store(Request $request)
                 ]
             ],
             
-            // 10. TREASURER 
             'Treasurer’s Office' => [
                  'title' => 'Municipal Treasurer',
                  'description' => 'Tax Payments and Clearances.',
@@ -430,7 +438,6 @@ public function store(Request $request)
                  ]
             ],
 
-            // 11. BARANGAY CERTIFICATIONS - TYPE-SPECIFIC CONFIGURATIONS
             'Barangay Certifications' => [
                 'title' => 'Barangay Certifications',
                 'description' => 'Residency, Indigency, Clearances & Employment Certificates.',
@@ -582,7 +589,6 @@ public function store(Request $request)
                         ['name' => 'cedula_number', 'label' => 'Cedula/CTC Number', 'type' => 'text'],
                     ]),
                 ],
-                // Default fields shown before type selection
                 'fields' => $this->getCommonBarangayFields()
             ]
         ];

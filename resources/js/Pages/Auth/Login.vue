@@ -19,57 +19,73 @@ const submit = () => {
     });
 };
 
+// Enhanced interaction states
 const mouseX = ref(0);
 const mouseY = ref(0);
 const showPassword = ref(false);
+const emailFocused = ref(false);
+const passwordFocused = ref(false);
 
+// Optimized mouse tracking with RAF
+let mouseRAF = null;
 const handleMouseMove = (e) => {
-    mouseX.value = e.clientX;
-    mouseY.value = e.clientY;
+    if (mouseRAF) return;
+    mouseRAF = requestAnimationFrame(() => {
+        mouseX.value = e.clientX;
+        mouseY.value = e.clientY;
+        mouseRAF = null;
+    });
 };
 
 onMounted(() => {
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
 });
 
 onUnmounted(() => {
     window.removeEventListener('mousemove', handleMouseMove);
+    if (mouseRAF) cancelAnimationFrame(mouseRAF);
 });
 </script>
 
 <template>
-    <Head title="Log in" />
+    <Head title="Sign In - E-PILI Portal" />
 
-    <div class="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 bg-navy-blue relative overflow-hidden font-sans selection:bg-blue-500/30 selection:text-blue-200">
+    <div class="login-container">
         
-        <!-- Enhanced Background with Mouse Tracking -->
-        <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#020617] to-black"></div>
-            <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
-
-            <!-- Dynamic Gradient Mesh -->
-            <div class="absolute inset-0 opacity-40">
-                <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[120px] animate-float"
+        <!-- Enhanced Background Layer -->
+        <div class="bg-layer">
+            <!-- Base gradient -->
+            <div class="bg-base"></div>
+            
+            <!-- Animated gradients -->
+            <div class="bg-gradients">
+                <div class="gradient gradient-1" 
                      :style="{ transform: `translate(${mouseX * 0.02}px, ${mouseY * 0.02}px)` }"></div>
-                <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[120px] animate-float-delayed"
+                <div class="gradient gradient-2" 
                      :style="{ transform: `translate(${-mouseX * 0.015}px, ${-mouseY * 0.015}px)` }"></div>
-                <div class="absolute top-1/2 left-1/2 w-80 h-80 bg-cyan-500/15 rounded-full blur-[100px] animate-pulse-slow"
-                     :style="{ transform: `translate(${mouseX * 0.01}px, ${mouseY * 0.01}px)` }"></div>
+                <div class="gradient gradient-3" 
+                     :style="{ transform: `translate(${mouseX * 0.01}px, ${-mouseY * 0.01}px)` }"></div>
             </div>
-
-            <!-- Animated Waves -->
-            <div class="absolute top-0 left-0 w-full h-[60vh] overflow-hidden opacity-30 mix-blend-screen">
-                <svg class="absolute w-[200%] h-full animate-wave-slow top-0 left-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 200" preserveAspectRatio="none">
-                    <path d="M0,100 C400,150 800,50 1600,100 L1600,0 L0,0 Z" fill="url(#gradBlue)" fill-opacity="0.5">
+            
+            <!-- Grid overlay -->
+            <div class="bg-grid"></div>
+            
+            <!-- Noise texture -->
+            <div class="bg-noise"></div>
+            
+            <!-- Animated waves -->
+            <div class="bg-waves">
+                <svg class="wave" viewBox="0 0 1600 200" preserveAspectRatio="none">
+                    <path d="M0,100 C400,150 800,50 1600,100 L1600,0 L0,0 Z" fill="url(#waveGrad1)">
                         <animate attributeName="d" dur="10s" repeatCount="indefinite"
                                  values="M0,100 C400,150 800,50 1600,100 L1600,0 L0,0 Z;
                                          M0,80 C400,120 800,80 1600,120 L1600,0 L0,0 Z;
                                          M0,100 C400,150 800,50 1600,100 L1600,0 L0,0 Z" />
                     </path>
                     <defs>
-                        <linearGradient id="gradBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <linearGradient id="waveGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0" />
-                            <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:1" />
+                            <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:0.3" />
                             <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
                         </linearGradient>
                     </defs>
@@ -77,349 +93,1212 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- Main Card -->
-        <div class="relative z-10 w-full max-w-[1100px] bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-scale-in card-glow">
+        <!-- Main Content -->
+        <div class="content-wrapper">
             
-            <!-- Left Sidebar -->
-            <div class="hidden md:flex md:w-5/12 relative p-10 flex-col justify-between overflow-hidden bg-gradient-to-br from-white/5 to-transparent border-r border-white/5">
-                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                <div class="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-tr from-blue-500/10 to-transparent rounded-full animate-slow-spin blur-3xl"></div>
-
-                <div class="relative z-10">
-                    <div class="status-badge">
-                        <span class="relative flex h-1.5 w-1.5">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500 shadow-lg shadow-blue-500/50"></span>
-                        </span>
-                        <span class="text-blue-300 text-[10px] font-bold tracking-[0.25em] uppercase">Secure Access</span>
-                    </div>
-                    <h1 class="text-3xl font-bold text-white tracking-tight leading-tight animate-fade-in-left mb-3">
-                        Welcome to <br />
-                        <span class="hero-gradient">E-PILI Portal</span>
-                    </h1>
-                    <p class="text-sm text-slate-400">Your gateway to digital governance</p>
-                </div>
-
-                <div class="relative z-10 space-y-3 mt-8">
-                    <div class="info-card group" style="animation-delay: 0.1s;">
-                        <div class="icon-wrapper bg-blue-500/20 text-blue-400">
-                            🏛️
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-white text-sm">Provincial Capital</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Governance center of CamSur</p>
-                        </div>
-                    </div>
-                    <div class="info-card group" style="animation-delay: 0.2s;">
-                        <div class="icon-wrapper bg-emerald-500/20 text-emerald-400">
-                            🌾
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-white text-sm">Agricultural Hub</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Premiere rice & pili production</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="relative z-10 mt-auto pt-6 animate-fade-in-up" style="animation-delay: 0.3s;">
-                    <div class="relative bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-blue-500/30 rounded-2xl p-5 overflow-hidden hover:scale-[1.02] transition-all duration-300 group">
-                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                        <h3 class="text-white font-bold text-sm mb-1 relative z-10">E-GOVERNANCE LIVE</h3>
-                        <p class="text-blue-200/70 text-[10px] relative z-10">Request documents online 24/7.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Form Section -->
-            <div class="w-full md:w-7/12 p-6 sm:p-8 md:p-12 flex flex-col justify-center relative">
+            <!-- Login Card -->
+            <div class="login-card">
                 
-                <div class="max-w-sm mx-auto w-full">
+                <!-- Left Panel - Info Section -->
+                <div class="info-panel">
+                    <div class="panel-bg"></div>
+                    <div class="panel-pattern"></div>
+                    <div class="panel-glow"></div>
                     
-                    <!-- Mobile Header -->
-                    <div class="md:hidden text-center mb-8 animate-scale-in">
-                        <div class="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-500/30 mb-4 hover:scale-110 transition-transform duration-300">
-                            <span class="text-3xl">🏛️</span>
+                    <div class="panel-content">
+                        <!-- Status Badge -->
+                        <div class="status-badge">
+                            <span class="status-pulse">
+                                <span class="pulse-ring"></span>
+                                <span class="pulse-dot"></span>
+                            </span>
+                            <span class="status-text">Secure Portal</span>
                         </div>
-                        <h2 class="text-xl font-bold text-white tracking-wide">E-PILI PORTAL</h2>
-                    </div>
 
-                    <div class="mb-8 text-center md:text-left animate-fade-in-up">
-                        <h3 class="text-3xl font-bold text-white tracking-tight mb-2">Welcome Back</h3>
-                        <p class="text-slate-400 text-sm">Please enter your credentials to continue.</p>
-                    </div>
+                        <!-- Title -->
+                        <div class="panel-title">
+                            <h1>
+                                Welcome to
+                                <span class="title-gradient">E-PILI Portal</span>
+                            </h1>
+                            <p>Your gateway to digital governance</p>
+                        </div>
 
-                    <form @submit.prevent="submit" class="space-y-5 animate-fade-in-up" style="animation-delay: 0.1s;">
-                        
-                        <div class="space-y-1.5">
-                            <label class="input-label">Email Address</label>
-                            <div class="relative group">
-                                <span class="input-icon">
-                                    📧
-                                </span>
-                                <input id="email" 
-                                       type="email" 
-                                       v-model="form.email" 
-                                       required 
-                                       placeholder="juan@example.com"
-                                       class="premium-input" />
-                                <div class="absolute inset-0 rounded-xl bg-blue-500/0 group-focus-within:bg-blue-500/5 transition-colors duration-300 pointer-events-none"></div>
+                        <!-- Feature Cards -->
+                        <div class="feature-list">
+                            <div class="feature-item" data-delay="0.1">
+                                <div class="feature-icon blue">
+                                    <span>🏛️</span>
+                                    <div class="icon-ring"></div>
+                                </div>
+                                <div class="feature-text">
+                                    <h3>Provincial Capital</h3>
+                                    <p>Governance center of CamSur</p>
+                                </div>
+                            </div>
+
+                            <div class="feature-item" data-delay="0.2">
+                                <div class="feature-icon emerald">
+                                    <span>🌾</span>
+                                    <div class="icon-ring"></div>
+                                </div>
+                                <div class="feature-text">
+                                    <h3>Agricultural Hub</h3>
+                                    <p>Premier rice & pili production</p>
+                                </div>
+                            </div>
+
+                            <div class="feature-item" data-delay="0.3">
+                                <div class="feature-icon purple">
+                                    <span>🔒</span>
+                                    <div class="icon-ring"></div>
+                                </div>
+                                <div class="feature-text">
+                                    <h3>Secure Platform</h3>
+                                    <p>Military-grade encryption</p>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="space-y-1.5">
+                        <!-- Promo Banner -->
+                        <div class="promo-banner">
+                            <div class="banner-shine"></div>
+                            <div class="banner-content">
+                                <h3>E-Governance Live</h3>
+                                <p>Request documents online 24/7</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel - Form Section -->
+                <div class="form-panel">
+                    
+                    <!-- Mobile Logo -->
+                    <div class="mobile-header">
+                        <div class="mobile-logo">
+                            <span>🏛️</span>
+                        </div>
+                        <h2>E-PILI Portal</h2>
+                    </div>
+
+                    <!-- Form Header -->
+                    <div class="form-header">
+                        <h3>Welcome Back</h3>
+                        <p>Enter your credentials to access your account</p>
+                    </div>
+
+                    <!-- Status Message -->
+                    <div v-if="status" class="status-message">
+                        <span class="status-icon">✓</span>
+                        <span>{{ status }}</span>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form @submit.prevent="submit" class="login-form">
+                        
+                        <!-- Email Input -->
+                        <div class="input-group">
+                            <label class="input-label">Email Address</label>
+                            <div class="input-wrapper" :class="{ focused: emailFocused }">
+                                <div class="input-bg"></div>
+                                <span class="input-icon">📧</span>
+                                <input 
+                                    type="email" 
+                                    v-model="form.email" 
+                                    @focus="emailFocused = true"
+                                    @blur="emailFocused = false"
+                                    placeholder="juan@example.com"
+                                    required
+                                    class="input-field" 
+                                />
+                                <div class="input-border"></div>
+                            </div>
+                        </div>
+
+                        <!-- Password Input -->
+                        <div class="input-group">
                             <label class="input-label">Password</label>
-                            <div class="relative group">
-                                <span class="input-icon">
-                                    🔒
-                                </span>
-                                <input id="password" 
-                                       :type="showPassword ? 'text' : 'password'" 
-                                       v-model="form.password" 
-                                       required 
-                                       placeholder="••••••••"
-                                       class="premium-input pr-12" />
+                            <div class="input-wrapper" :class="{ focused: passwordFocused }">
+                                <div class="input-bg"></div>
+                                <span class="input-icon">🔒</span>
+                                <input 
+                                    :type="showPassword ? 'text' : 'password'" 
+                                    v-model="form.password" 
+                                    @focus="passwordFocused = true"
+                                    @blur="passwordFocused = false"
+                                    placeholder="••••••••"
+                                    required
+                                    class="input-field" 
+                                />
                                 <button 
                                     type="button"
                                     @click="showPassword = !showPassword"
-                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-400 transition-colors duration-300"
+                                    class="toggle-password"
                                 >
                                     <span v-if="!showPassword">👁️</span>
                                     <span v-else>🙈</span>
                                 </button>
-                                <div class="absolute inset-0 rounded-xl bg-blue-500/0 group-focus-within:bg-blue-500/5 transition-colors duration-300 pointer-events-none"></div>
+                                <div class="input-border"></div>
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-between pt-1">
-                            <label class="flex items-center cursor-pointer group">
-                                <div class="relative">
-                                    <input type="checkbox" v-model="form.remember" class="peer sr-only">
-                                    <div class="checkbox-box">
-                                        <svg class="checkbox-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <span class="ml-2 text-xs text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
+                        <!-- Remember & Forgot -->
+                        <div class="form-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" v-model="form.remember" class="checkbox-input">
+                                <span class="checkbox-box">
+                                    <svg class="checkbox-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </span>
+                                <span class="checkbox-text">Remember me</span>
                             </label>
 
-                            <Link v-if="canResetPassword" :href="route('password.request')" class="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors hover:underline">
+                            <Link 
+                                v-if="canResetPassword" 
+                                :href="route('password.request')" 
+                                class="forgot-link"
+                            >
                                 Forgot Password?
                             </Link>
                         </div>
 
-                        <button :disabled="form.processing" class="premium-button group">
-                            <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl group-hover:scale-105 transition-transform duration-300"></div>
-                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                            <div class="flex items-center justify-center gap-2 relative z-10">
+                        <!-- Submit Button -->
+                        <button 
+                            type="submit" 
+                            :disabled="form.processing" 
+                            class="submit-btn"
+                        >
+                            <div class="btn-bg"></div>
+                            <div class="btn-shine"></div>
+                            <div class="btn-content">
                                 <span v-if="!form.processing">Sign In</span>
-                                <span v-else class="flex items-center gap-2">
-                                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                <span v-else class="btn-loading">
+                                    <svg class="spinner" viewBox="0 0 24 24">
+                                        <circle class="spinner-track" cx="12" cy="12" r="10" stroke-width="4"></circle>
+                                        <path class="spinner-fill" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
                                     Signing In...
                                 </span>
-                                <svg class="w-4 h-4 transition-transform group-hover:translate-x-2 duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="btn-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                                 </svg>
                             </div>
                         </button>
                     </form>
 
-                    <div class="mt-8 text-center animate-fade-in-up" style="animation-delay: 0.2s;">
-                        <div class="relative flex py-2 items-center mb-6">
-                            <div class="flex-grow border-t border-white/10"></div>
-                            <span class="flex-shrink-0 mx-4 text-slate-500 text-[10px] uppercase tracking-widest">Or access with</span>
-                            <div class="flex-grow border-t border-white/10"></div>
-                        </div>
+                    <!-- Divider -->
+                    <div class="divider">
+                        <div class="divider-line"></div>
+                        <span class="divider-text">Or continue with</span>
+                        <div class="divider-line"></div>
+                    </div>
 
-                        <div class="grid grid-cols-2 gap-4 mb-8">
-                            <button class="social-button group">
-                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 opacity-80 group-hover:opacity-100 transition-all group-hover:scale-110" alt="Google">
-                                <span class="font-medium text-slate-300 text-xs group-hover:text-white transition-colors">Google</span>
-                            </button>
-                            <button class="social-button group">
-                                <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" class="w-5 h-5 opacity-80 group-hover:opacity-100 transition-all group-hover:scale-110" alt="Facebook">
-                                <span class="font-medium text-slate-300 text-xs group-hover:text-white transition-colors">Facebook</span>
-                            </button>
-                        </div>
+                    <!-- Social Login -->
+                    <div class="social-login">
+                        <button class="social-btn">
+                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google">
+                            <span>Google</span>
+                        </button>
+                        <button class="social-btn">
+                            <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="Facebook">
+                            <span>Facebook</span>
+                        </button>
+                    </div>
 
-                        <p class="text-xs text-slate-500">
-                            No account yet? 
-                            <Link :href="route('register')" class="text-blue-400 font-bold hover:text-blue-300 transition-colors hover:underline">
-                                Create an account
+                    <!-- Register Link -->
+                    <div class="register-link">
+                        <p>
+                            Don't have an account? 
+                            <Link :href="route('register')" class="link">
+                                Create one now
                             </Link>
                         </p>
                     </div>
                 </div>
-            </div>
 
+            </div>
         </div>
     </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
+/* ===== BASE SETUP ===== */
 * {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.login-container {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: #000;
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
 }
 
-/* Card Glow Effect */
-.card-glow {
-    box-shadow: 0 0 80px rgba(59, 130, 246, 0.15);
-    transition: box-shadow 0.5s ease;
+/* ===== BACKGROUND LAYER ===== */
+.bg-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
 }
 
-.card-glow:hover {
-    box-shadow: 0 0 120px rgba(59, 130, 246, 0.25);
+.bg-base {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top, #0f172a 0%, #020617 50%, #000 100%);
+}
+
+.bg-gradients {
+    position: absolute;
+    inset: 0;
+    opacity: 0.6;
+}
+
+.gradient {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(140px);
+    will-change: transform;
+    animation: float-gradient 30s ease-in-out infinite;
+}
+
+.gradient-1 {
+    top: 20%;
+    left: 20%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.2), transparent 70%);
+}
+
+.gradient-2 {
+    bottom: 20%;
+    right: 20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.15), transparent 70%);
+    animation-delay: 5s;
+}
+
+.gradient-3 {
+    top: 50%;
+    left: 50%;
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.12), transparent 70%);
+    animation-delay: 10s;
+}
+
+@keyframes float-gradient {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(40px, -40px); }
+    66% { transform: translate(-40px, 40px); }
+}
+
+.bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+}
+
+.bg-noise {
+    position: absolute;
+    inset: 0;
+    background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="3.5" numOctaves="4"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23n)" opacity="0.05"/%3E%3C/svg%3E');
+    opacity: 0.03;
+    mix-blend-mode: overlay;
+}
+
+.bg-waves {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60vh;
+    opacity: 0.25;
+    overflow: hidden;
+}
+
+.wave {
+    position: absolute;
+    width: 200%;
+    height: 100%;
+    animation: wave-drift 30s linear infinite;
+}
+
+@keyframes wave-drift {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+/* ===== CONTENT WRAPPER ===== */
+.content-wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 1100px;
+}
+
+/* ===== LOGIN CARD ===== */
+.login-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    background: rgba(10, 10, 15, 0.7);
+    backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 2.5rem;
+    overflow: hidden;
+    box-shadow: 
+        0 20px 80px rgba(0, 0, 0, 0.8),
+        0 0 100px rgba(59, 130, 246, 0.1);
+    animation: card-appear 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 768px) {
+    .login-card {
+        grid-template-columns: 5fr 7fr;
+    }
+}
+
+@keyframes card-appear {
+    from { opacity: 0; transform: scale(0.95) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ===== INFO PANEL ===== */
+.info-panel {
+    position: relative;
+    display: none;
+    padding: 3rem;
+    overflow: hidden;
+}
+
+@media (min-width: 768px) {
+    .info-panel {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+}
+
+.panel-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.panel-pattern {
+    position: absolute;
+    inset: 0;
+    background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.02"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
+    opacity: 0.1;
+}
+
+.panel-glow {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent 70%);
+    animation: glow-rotate 20s linear infinite;
+    filter: blur(60px);
+}
+
+@keyframes glow-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.panel-content {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
 /* Status Badge */
 .status-badge {
-    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full;
-    @apply bg-blue-500/10 border border-blue-500/20 backdrop-blur-md mb-6;
-    @apply animate-slide-in-down transition-all duration-300 hover:scale-105;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 9999px;
+    backdrop-filter: blur(20px);
+    width: fit-content;
+    animation: badge-float 3s ease-in-out infinite;
 }
 
-/* Hero Gradient */
-.hero-gradient {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400;
+@keyframes badge-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.status-pulse {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pulse-ring {
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: #60a5fa;
+    animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+    0% { transform: scale(0.8); opacity: 1; }
+    80%, 100% { transform: scale(2.5); opacity: 0; }
+}
+
+.pulse-dot {
+    position: relative;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #60a5fa;
+    box-shadow: 0 0 15px rgba(96, 165, 250, 0.8);
+}
+
+.status-text {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #93c5fd;
+}
+
+/* Panel Title */
+.panel-title {
+    animation: slide-in-left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.panel-title h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+    color: white;
+}
+
+.title-gradient {
+    display: block;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
     background-size: 200% auto;
-    animation: gradient-shift 5s ease infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient-flow 5s linear infinite;
 }
 
-/* Info Card */
-.info-card {
-    @apply flex items-center gap-4 p-4 rounded-2xl;
-    @apply bg-black/40 backdrop-blur-xl border border-white/10;
-    @apply hover:bg-white/5 hover:scale-[1.02] transition-all duration-300 cursor-default;
-    @apply animate-fade-in-up;
-}
-
-/* Icon Wrapper */
-.icon-wrapper {
-    @apply w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-lg;
-    @apply shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300;
-}
-
-/* Input Label */
-.input-label {
-    @apply text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1;
-}
-
-/* Input Icon */
-.input-icon {
-    @apply absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none;
-    @apply text-slate-500 text-lg transition-all duration-300;
-}
-
-.premium-input:focus ~ .input-icon {
-    @apply text-blue-400;
-}
-
-/* Premium Input */
-.premium-input {
-    @apply w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4;
-    @apply text-sm text-white placeholder-slate-500;
-    @apply focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent;
-    @apply transition-all hover:bg-white/10 hover:border-white/20;
-}
-
-/* Checkbox */
-.checkbox-box {
-    @apply w-4 h-4 border-2 border-slate-600 rounded bg-transparent;
-    @apply peer-checked:bg-gradient-to-br peer-checked:from-blue-500 peer-checked:to-indigo-500;
-    @apply peer-checked:border-blue-500 transition-all duration-300;
-    @apply hover:border-blue-500;
-}
-
-.checkbox-check {
-    @apply absolute inset-0 w-4 h-4 text-white opacity-0;
-    @apply peer-checked:opacity-100 pointer-events-none transition-opacity duration-300;
-}
-
-/* Premium Button */
-.premium-button {
-    @apply relative w-full text-white font-bold py-3.5 rounded-xl;
-    @apply shadow-xl shadow-blue-500/30 transition-all;
-    @apply hover:shadow-2xl hover:shadow-blue-500/40;
-    @apply disabled:opacity-50 disabled:cursor-not-allowed;
-    @apply overflow-hidden;
-}
-
-/* Social Button */
-.social-button {
-    @apply bg-white/5 border border-white/10 rounded-xl py-3;
-    @apply hover:bg-white/10 hover:border-white/20 hover:scale-[1.02];
-    @apply transition-all flex items-center justify-center gap-2;
-}
-
-/* Animations */
-@keyframes waveSlow { 
-    0% { transform: translateX(0); } 
-    100% { transform: translateX(-50%); } 
-}
-.animate-wave-slow { animation: waveSlow 30s linear infinite; }
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-20px) rotate(2deg); }
-}
-.animate-float { animation: float 6s ease-in-out infinite; }
-
-@keyframes float-delayed {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(20px) rotate(-2deg); }
-}
-.animate-float-delayed { animation: float-delayed 8s ease-in-out infinite; }
-
-@keyframes pulse-slow { 
-    0%, 100% { opacity: 0.3; transform: scale(1); } 
-    50% { opacity: 0.6; transform: scale(1.05); } 
-}
-.animate-pulse-slow { animation: pulse-slow 8s ease-in-out infinite; }
-
-@keyframes slow-spin { 
-    from { transform: rotate(0deg); } 
-    to { transform: rotate(360deg); } 
-}
-.animate-slow-spin { animation: slow-spin 20s linear infinite; }
-
-@keyframes scale-in { 
-    from { opacity: 0; transform: scale(0.95); } 
-    to { opacity: 1; transform: scale(1); } 
-}
-.animate-scale-in { animation: scale-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-
-@keyframes fade-in-up { 
-    from { opacity: 0; transform: translateY(30px); } 
-    to { opacity: 1; transform: translateY(0); } 
-}
-.animate-fade-in-up { animation: fade-in-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-
-@keyframes fade-in-left { 
-    from { opacity: 0; transform: translateX(-30px); } 
-    to { opacity: 1; transform: translateX(0); } 
-}
-.animate-fade-in-left { animation: fade-in-left 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-
-@keyframes slide-in-down { 
-    from { opacity: 0; transform: translateY(-20px); } 
-    to { opacity: 1; transform: translateY(0); } 
-}
-.animate-slide-in-down { animation: slide-in-down 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-
-@keyframes gradient-shift {
+@keyframes gradient-flow {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
 
-html {
-    scroll-behavior: smooth;
+.panel-title p {
+    font-size: 0.875rem;
+    color: rgb(148, 163, 184);
+    font-weight: 400;
+}
+
+/* Feature List */
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.25rem;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: slide-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    animation-fill-mode: both;
+}
+
+.feature-item[data-delay="0.1"] { animation-delay: 0.1s; }
+.feature-item[data-delay="0.2"] { animation-delay: 0.2s; }
+.feature-item[data-delay="0.3"] { animation-delay: 0.3s; }
+
+@keyframes slide-in-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.feature-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateX(4px);
+}
+
+.feature-icon {
+    position: relative;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    transition: transform 0.3s;
+}
+
+.feature-item:hover .feature-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.feature-icon.blue {
+    background: rgba(59, 130, 246, 0.15);
+    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.2);
+}
+
+.feature-icon.emerald {
+    background: rgba(16, 185, 129, 0.15);
+    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.2);
+}
+
+.feature-icon.purple {
+    background: rgba(168, 85, 247, 0.15);
+    box-shadow: 0 8px 30px rgba(168, 85, 247, 0.2);
+}
+
+.icon-ring {
+    position: absolute;
+    inset: -0.375rem;
+    border: 2px solid currentColor;
+    border-radius: 1.125rem;
+    opacity: 0;
+    animation: ring-pulse 2s ease-out infinite;
+}
+
+@keyframes ring-pulse {
+    0% { transform: scale(0.9); opacity: 0.8; }
+    100% { transform: scale(1.3); opacity: 0; }
+}
+
+.feature-item:hover .icon-ring {
+    opacity: 0.5;
+}
+
+.feature-text h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 0.25rem;
+}
+
+.feature-text p {
+    font-size: 0.75rem;
+    color: rgb(148, 163, 184);
+}
+
+/* Promo Banner */
+.promo-banner {
+    position: relative;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.15));
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 1.5rem;
+    overflow: hidden;
+    animation: slide-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+    transition: transform 0.3s;
+}
+
+.promo-banner:hover {
+    transform: scale(1.02);
+}
+
+.banner-shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shine-sweep 3s ease-in-out infinite;
+}
+
+@keyframes shine-sweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.banner-content h3 {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.375rem;
+}
+
+.banner-content p {
+    font-size: 0.75rem;
+    color: rgb(147, 197, 253);
+}
+
+/* ===== FORM PANEL ===== */
+.form-panel {
+    padding: 2rem;
+    position: relative;
+}
+
+@media (min-width: 640px) {
+    .form-panel {
+        padding: 3rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .form-panel {
+        padding: 3.5rem;
+    }
+}
+
+/* Mobile Header */
+.mobile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 768px) {
+    .mobile-header {
+        display: none;
+    }
+}
+
+.mobile-logo {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 1.5rem;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    box-shadow: 0 10px 40px rgba(59, 130, 246, 0.4);
+    transition: transform 0.3s;
+}
+
+.mobile-logo:hover {
+    transform: scale(1.1);
+}
+
+.mobile-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+/* Form Header */
+.form-header {
+    margin-bottom: 2rem;
+    text-align: center;
+    animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+@media (min-width: 768px) {
+    .form-header {
+        text-align: left;
+    }
+}
+
+.form-header h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.5rem;
+}
+
+.form-header p {
+    font-size: 0.9375rem;
+    color: rgb(148, 163, 184);
+}
+
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Status Message */
+.status-message {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 1rem;
+    color: rgb(134, 239, 172);
+    font-size: 0.875rem;
+    animation: slide-in-down 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slide-in-down {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.status-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background: rgb(34, 197, 94);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* Login Form */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+/* Input Group */
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.input-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgb(148, 163, 184);
+    margin-left: 0.25rem;
+}
+
+.input-wrapper {
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-bg {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 1rem;
+    transition: all 0.3s;
+}
+
+.input-wrapper:hover .input-bg {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.input-wrapper.focused .input-bg {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.125rem;
+    color: rgb(100, 116, 139);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.input-wrapper.focused .input-icon {
+    color: #60a5fa;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.input-field {
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    color: white;
+    font-size: 0.9375rem;
+    outline: none;
+    transition: all 0.3s;
+}
+
+.input-field::placeholder {
+    color: rgb(100, 116, 139);
+}
+
+.input-field:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.input-field:focus {
+    border-color: transparent;
+}
+
+.input-border {
+    position: absolute;
+    inset: -1px;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(99, 102, 241, 0.5));
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.input-wrapper.focused .input-border {
+    opacity: 1;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    font-size: 1.125rem;
+    color: rgb(100, 116, 139);
+    transition: all 0.3s;
+}
+
+.toggle-password:hover {
+    color: #60a5fa;
+    transform: translateY(-50%) scale(1.1);
+}
+
+/* Form Options */
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    cursor: pointer;
+}
+
+.checkbox-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.checkbox-box {
+    position: relative;
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 2px solid rgb(71, 85, 105);
+    border-radius: 0.375rem;
+    background: transparent;
+    transition: all 0.3s;
+}
+
+.checkbox-input:checked + .checkbox-box {
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    border-color: #3b82f6;
+}
+
+.checkbox-label:hover .checkbox-box {
+    border-color: #60a5fa;
+}
+
+.checkbox-check {
+    position: absolute;
+    inset: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.checkbox-input:checked + .checkbox-box .checkbox-check {
+    opacity: 1;
+}
+
+.checkbox-text {
+    font-size: 0.875rem;
+    color: rgb(203, 213, 225);
+    transition: color 0.3s;
+}
+
+.checkbox-label:hover .checkbox-text {
+    color: white;
+}
+
+.forgot-link {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #60a5fa;
+    transition: all 0.3s;
+}
+
+.forgot-link:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+}
+
+/* Submit Button */
+.submit-btn {
+    position: relative;
+    width: 100%;
+    padding: 1rem;
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.submit-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    transition: transform 0.3s;
+}
+
+.submit-btn:hover:not(:disabled) .btn-bg {
+    transform: scale(1.05);
+}
+
+.btn-shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s;
+}
+
+.submit-btn:hover:not(:disabled) .btn-shine {
+    transform: translateX(100%);
+}
+
+.btn-content {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.btn-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.spinner {
+    width: 1.125rem;
+    height: 1.125rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.spinner-track {
+    fill: none;
+    stroke: currentColor;
+    opacity: 0.25;
+}
+
+.spinner-fill {
+    opacity: 0.75;
+}
+
+.btn-arrow {
+    width: 1.125rem;
+    height: 1.125rem;
+    transition: transform 0.3s;
+}
+
+.submit-btn:hover:not(:disabled) .btn-arrow {
+    transform: translateX(4px);
+}
+
+/* Divider */
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.divider-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgb(100, 116, 139);
+}
+
+/* Social Login */
+.social-login {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+.social-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    padding: 0.875rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    color: rgb(203, 213, 225);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.social-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    color: white;
+}
+
+.social-btn img {
+    width: 1.25rem;
+    height: 1.25rem;
+    opacity: 0.9;
+    transition: all 0.3s;
+}
+
+.social-btn:hover img {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Register Link */
+.register-link {
+    margin-top: 2rem;
+    text-align: center;
+    animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+
+.register-link p {
+    font-size: 0.875rem;
+    color: rgb(148, 163, 184);
+}
+
+.register-link .link {
+    font-weight: 700;
+    color: #60a5fa;
+    transition: all 0.3s;
+}
+
+.register-link .link:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+}
+
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media (max-width: 640px) {
+    .login-card {
+        border-radius: 2rem;
+    }
+    
+    .form-panel {
+        padding: 1.5rem;
+    }
+    
+    .form-header h3 {
+        font-size: 1.75rem;
+    }
+}
+
+/* ===== ACCESSIBILITY ===== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+    .bg-layer {
+        display: none !important;
+    }
+    
+    .login-container {
+        background: white;
+        color: black;
+    }
 }
 </style>
