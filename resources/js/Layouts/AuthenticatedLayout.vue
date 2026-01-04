@@ -113,7 +113,7 @@ const getAvatarGradient = (name) => {
 };
 
 // Optimized loading transitions
-let minLoadTime = 200; // Reduced from 300ms
+let minLoadTime = 200;
 let startTime = 0;
 
 router.on('start', () => { 
@@ -164,22 +164,6 @@ const mobileNavItems = computed(() => {
         <!-- Optimized Scroll Progress -->
         <div class="scroll-progress-container">
             <div class="scroll-progress-bar" :style="{ width: scrollProgress + '%' }"></div>
-        </div>
-        
-        <!-- Enhanced Mobile Phone Frame -->
-        <div class="mobile-phone-frame">
-            <div class="notch-container">
-                <div class="notch-speaker"></div>
-                <div class="notch-shine"></div>
-            </div>
-            
-            <div class="phone-bezel">
-                <div class="phone-bezel-shine"></div>
-            </div>
-
-            <div class="camera-lens">
-                <div class="camera-reflection"></div>
-            </div>
         </div>
 
         <!-- Optimized Background -->
@@ -646,92 +630,6 @@ const mobileNavItems = computed(() => {
     box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
     transition: width 0.1s ease-out;
     will-change: width;
-}
-
-/* Mobile Phone Frame - Simplified */
-.mobile-phone-frame {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 200;
-    display: none;
-}
-
-@media (max-width: 1023px) {
-    .mobile-phone-frame {
-        display: block;
-    }
-}
-
-.notch-container {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: clamp(120px, 30vw, 160px);
-    height: clamp(28px, 7vw, 36px);
-    border-radius: 0 0 24px 24px;
-    background: linear-gradient(to bottom, #1f2937, #000);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
-    will-change: transform;
-}
-
-.notch-speaker {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: clamp(40px, 10vw, 60px);
-    height: clamp(4px, 1vw, 6px);
-    background: linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1));
-    border-radius: 999px;
-}
-
-.notch-shine {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.1), transparent);
-    border-radius: 0 0 24px 24px;
-    animation: pulse-soft 4s ease-in-out infinite;
-}
-
-.phone-bezel {
-    position: absolute;
-    inset: 0;
-    border-radius: clamp(40px, 10vw, 52px);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), inset 0 0 40px rgba(0, 0, 0, 0.5);
-    will-change: transform;
-}
-
-.phone-bezel-shine {
-    position: absolute;
-    inset: 2px;
-    border-radius: clamp(38px, 9.5vw, 50px);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent);
-}
-
-.camera-lens {
-    position: absolute;
-    top: clamp(48px, 12vw, 56px);
-    left: clamp(20px, 5vw, 28px);
-    width: clamp(10px, 2.5vw, 12px);
-    height: clamp(10px, 2.5vw, 12px);
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.6), rgba(168, 85, 247, 0.6));
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.3);
-    will-change: transform;
-}
-
-.camera-reflection {
-    position: absolute;
-    top: 20%;
-    left: 20%;
-    width: 40%;
-    height: 40%;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.6);
-    filter: blur(1px);
 }
 
 /* Optimized Backgrounds */
@@ -1247,7 +1145,6 @@ const mobileNavItems = computed(() => {
     filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
 }
 
-/* Continuing from mobile-nav-bar box-shadow */
 .mobile-nav-bar {
     position: relative;
     background: rgba(18, 18, 20, 0.98);
@@ -1340,7 +1237,7 @@ const mobileNavItems = computed(() => {
     bottom: 6rem;
     z-index: 50;
     overflow-y: auto;
-    padding: max(env(safe-area-inset-top), 3rem) 1rem 2rem;
+    padding: 1.5rem 1rem 2rem;
     pointer-events: auto;
 }
 
@@ -1609,7 +1506,7 @@ const mobileNavItems = computed(() => {
     position: relative;
     z-index: 10;
     min-height: 100vh;
-    padding-top: 6rem;
+    padding-top: 2rem;
     padding-bottom: 8rem;
     transition: opacity 0.3s;
 }
@@ -1704,11 +1601,6 @@ const mobileNavItems = computed(() => {
 }
 
 /* Animations */
-@keyframes pulse-soft {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 0.6; }
-}
-
 @keyframes float-glow {
     0%, 100% { transform: translate(0, 0); }
     33% { transform: translate(30px, -30px); }
@@ -1884,13 +1776,14 @@ const mobileNavItems = computed(() => {
 }
 
 /* Safe area insets for notched devices */
-@supports (padding: env(safe-area-inset-top)) {
+@supports (padding: env(safe-area-inset-bottom)) {
     .mobile-nav-bar {
         padding-bottom: calc(2rem + env(safe-area-inset-bottom));
     }
     
     .mobile-menu {
-        padding-top: calc(max(env(safe-area-inset-top), 3rem));
+        padding-top: calc(1.5rem);
+        padding-bottom: calc(2rem + env(safe-area-inset-bottom));
     }
 }
 
