@@ -161,12 +161,12 @@ const mobileNavItems = computed(() => {
 <template>
     <div class="app-container">
         
-        <!-- Optimized Scroll Progress -->
-        <div class="scroll-progress-container">
+        <!-- Enhanced Scroll Progress -->
+        <div class="scroll-progress-wrapper">
             <div class="scroll-progress-bar" :style="{ width: scrollProgress + '%' }"></div>
         </div>
 
-        <!-- Optimized Background -->
+        <!-- Premium Background -->
         <div class="bg-layer">
             <!-- Mobile Background -->
             <div class="mobile-bg">
@@ -206,7 +206,7 @@ const mobileNavItems = computed(() => {
             </div>
         </div>
 
-        <!-- Optimized Desktop Navigation -->
+        <!-- Enhanced Desktop Navigation -->
         <nav 
             class="desktop-nav"
             :class="{ 
@@ -217,11 +217,12 @@ const mobileNavItems = computed(() => {
         >
             <div class="nav-container">
                 <div class="nav-glass"></div>
-                <div class="nav-border"></div>
+                <div class="nav-glow"></div>
                 
                 <!-- Logo -->
                 <Link :href="route('dashboard')" class="nav-logo">
-                    <div class="logo-glow-wrapper">
+                    <div class="logo-wrapper">
+                        <div class="logo-glow"></div>
                         <img :src="logoUrl" alt="E-Pili Logo" class="logo-img" />
                     </div>
                 </Link>
@@ -236,6 +237,7 @@ const mobileNavItems = computed(() => {
                     >
                         <span class="nav-link-icon">🏠</span>
                         <span class="nav-link-text">Dashboard</span>
+                        <span v-if="route().current('dashboard')" class="nav-link-indicator"></span>
                     </Link>
 
                     <template v-if="user.role === 'admin'">
@@ -245,6 +247,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">📊</span>
                             <span class="nav-link-text">Command</span>
+                            <span v-if="route().current('admin.analytics')" class="nav-link-indicator"></span>
                         </Link>
                         <Link 
                             :href="route('admin.documents.index')" 
@@ -252,6 +255,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">✅</span>
                             <span class="nav-link-text">Approvals</span>
+                            <span v-if="route().current('admin.documents.*')" class="nav-link-indicator"></span>
                         </Link>
                         <Link 
                             :href="route('marketplace.index')" 
@@ -259,6 +263,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">🏪</span>
                             <span class="nav-link-text">Marketplace</span>
+                            <span v-if="route().current('marketplace.*')" class="nav-link-indicator"></span>
                         </Link>
                     </template>
 
@@ -269,6 +274,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">👤</span>
                             <span class="nav-link-text">Profile</span>
+                            <span v-if="route().current('profile.barangay.*')" class="nav-link-indicator"></span>
                         </Link>
 
                         <Link 
@@ -277,6 +283,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">🏪</span>
                             <span class="nav-link-text">Market</span>
+                            <span v-if="route().current('marketplace.*')" class="nav-link-indicator"></span>
                         </Link>
 
                         <Link 
@@ -286,6 +293,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">📊</span>
                             <span class="nav-link-text">Business</span>
+                            <span v-if="route().current('business.dashboard')" class="nav-link-indicator"></span>
                         </Link>
 
                         <Link 
@@ -295,6 +303,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">🚀</span>
                             <span class="nav-link-text">Start Business</span>
+                            <span v-if="route().current('business.register')" class="nav-link-indicator"></span>
                         </Link>
 
                         <Link 
@@ -303,6 +312,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">📄</span>
                             <span class="nav-link-text">Docs</span>
+                            <span v-if="route().current('services.*')" class="nav-link-indicator"></span>
                         </Link>
                         
                         <Link 
@@ -311,6 +321,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">🌾</span>
                             <span class="nav-link-text">Prices</span>
+                            <span v-if="route().current('market.*')" class="nav-link-indicator"></span>
                         </Link>
                         
                         <Link 
@@ -319,6 +330,7 @@ const mobileNavItems = computed(() => {
                         >
                             <span class="nav-link-icon">🚨</span>
                             <span class="nav-link-text">Emergency</span>
+                            <span v-if="route().current('emergency.*')" class="nav-link-indicator danger-indicator"></span>
                         </Link>
                     </template>
                 </div>
@@ -332,7 +344,7 @@ const mobileNavItems = computed(() => {
                         <template #trigger>
                             <button class="user-btn">
                                 <div class="user-avatar-ring"></div>
-                                <div :class="`user-avatar ${getAvatarGradient(user.name)}`">
+                                <div :class="`user-avatar bg-gradient-to-br ${getAvatarGradient(user.name)}`">
                                     <span>{{ user.name.charAt(0) }}</span>
                                 </div>
                                 <div class="user-status"></div>
@@ -341,7 +353,7 @@ const mobileNavItems = computed(() => {
                         <template #content>
                             <div class="dropdown-content">
                                 <div class="dropdown-header">
-                                    <div :class="`dropdown-avatar ${getAvatarGradient(user.name)}`">
+                                    <div :class="`dropdown-avatar bg-gradient-to-br ${getAvatarGradient(user.name)}`">
                                         <span>{{ user.name.charAt(0) }}</span>
                                     </div>
                                     <div class="dropdown-user-info">
@@ -399,16 +411,16 @@ const mobileNavItems = computed(() => {
             </div>
         </nav>
 
-        <!-- Mobile Bottom Navigation -->
+        <!-- Enhanced Mobile Bottom Navigation -->
         <nav class="mobile-nav" :class="{ 'mobile-nav-hidden': isLoading }">
             <div class="mobile-nav-wrapper">
                 <!-- Center Button -->
-                <div class="mobile-center-btn-container">
+                <div class="mobile-center-btn-wrapper">
                     <button @click="showingMobileMenu = !showingMobileMenu" class="mobile-center-btn">
                         <div class="center-btn-pulse" :class="{'opacity-0': showingMobileMenu}"></div>
                         <div class="center-btn-glow"></div>
-                        <div class="center-btn-inner" :class="{'rotate-180 scale-110': showingMobileMenu}">
-                            <span class="center-btn-icon">✨</span>
+                        <div class="center-btn-inner" :class="{'rotate-45 scale-110': showingMobileMenu}">
+                            <span class="center-btn-icon">{{ showingMobileMenu ? '✕' : '✨' }}</span>
                         </div>
                     </button>
                 </div>
@@ -416,6 +428,7 @@ const mobileNavItems = computed(() => {
                 <!-- Nav Bar -->
                 <div class="mobile-nav-bar">
                     <div class="mobile-nav-glass"></div>
+                    <div class="mobile-nav-glow"></div>
                     
                     <div class="mobile-nav-items">
                         <Link 
@@ -427,8 +440,10 @@ const mobileNavItems = computed(() => {
                                 'mobile-nav-item-danger': item.danger
                             }]"
                         >
+                            <div class="nav-item-ripple"></div>
                             <span class="mobile-nav-icon">{{ item.icon }}</span>
                             <span class="mobile-nav-label">{{ item.name }}</span>
+                            <span v-if="route().current(item.current)" class="mobile-nav-indicator"></span>
                         </Link>
                     </div>
                     
@@ -437,122 +452,142 @@ const mobileNavItems = computed(() => {
             </div>
         </nav>
 
-        <!-- Mobile More Menu -->
+        <!-- Enhanced Mobile More Menu -->
         <Transition name="mobile-menu">
             <div v-show="showingMobileMenu" class="mobile-menu">
                 <!-- Profile Card -->
                 <div class="mobile-profile">
-                    <div class="mobile-profile-glass"></div>
-                    
-                    <div class="mobile-profile-content">
-                        <div :class="`mobile-profile-avatar ${getAvatarGradient(user.name)}`">
-                            <span>{{ user.name.charAt(0) }}</span>
-                            <div class="mobile-profile-status"></div>
-                        </div>
+                    <div class="mobile-profile-glass">
+                        <div class="mobile-profile-glow"></div>
+                        <div class="mobile-profile-shine"></div>
                         
-                        <div class="mobile-profile-info">
-                            <p class="mobile-profile-name">{{ user.name }}</p>
-                            <p class="mobile-profile-email">{{ user.email }}</p>
-                            <div class="mobile-profile-badges">
-                                <span v-if="user.role === 'admin'" class="profile-badge profile-badge-admin">
-                                    <span>👑</span>
-                                    <span>Admin</span>
-                                </span>
-                                <span v-else class="profile-badge profile-badge-user">
-                                    <span>👤</span>
-                                    <span>{{ isBusinessOwner ? 'Business' : 'Citizen' }}</span>
-                                </span>
+                        <div class="mobile-profile-content">
+                            <div :class="`mobile-profile-avatar bg-gradient-to-br ${getAvatarGradient(user.name)}`">
+                                <span>{{ user.name.charAt(0) }}</span>
+                                <div class="mobile-profile-status"></div>
                             </div>
+                            
+                            <div class="mobile-profile-info">
+                                <p class="mobile-profile-name">{{ user.name }}</p>
+                                <p class="mobile-profile-email">{{ user.email }}</p>
+                                <div class="mobile-profile-badges">
+                                    <span v-if="user.role === 'admin'" class="profile-badge profile-badge-admin">
+                                        <span>👑</span>
+                                        <span>Admin</span>
+                                    </span>
+                                    <span v-else class="profile-badge profile-badge-user">
+                                        <span>👤</span>
+                                        <span>{{ isBusinessOwner ? 'Business' : 'Citizen' }}</span>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <NotificationCenter />
                         </div>
                         
-                        <NotificationCenter />
-                    </div>
-                    
-                    <div class="mobile-profile-actions">
-                        <Link :href="route('profile.edit')" class="profile-action-btn">
-                            <span>⚙️</span>
-                            <span>Settings</span>
-                        </Link>
-                        <Link :href="route('logout')" method="post" as="button" class="profile-action-btn profile-action-btn-danger">
-                            <span>🚪</span>
-                            <span>Logout</span>
-                        </Link>
+                        <div class="mobile-profile-actions">
+                            <Link :href="route('profile.edit')" class="profile-action-btn">
+                                <span>⚙️</span>
+                                <span>Settings</span>
+                            </Link>
+                            <Link :href="route('logout')" method="post" as="button" class="profile-action-btn profile-action-btn-danger">
+                                <span>🚪</span>
+                                <span>Logout</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Menu Grid -->
                 <div class="mobile-menu-grid">
-                    <div class="mobile-menu-glass"></div>
-                    
-                    <div class="mobile-menu-header">
-                        <h3 class="mobile-menu-title">Quick Actions</h3>
-                    </div>
-                    
-                    <div class="mobile-menu-items">
-                        <template v-if="user.role !== 'admin'">
-                            <Link 
-                                v-if="isBusinessOwner" 
-                                :href="route('business.dashboard')" 
-                                class="mobile-menu-card"
-                            >
-                                <span class="menu-card-icon">📊</span>
+                    <div class="mobile-menu-glass">
+                        <div class="mobile-menu-glow"></div>
+                        <div class="mobile-menu-shine"></div>
+                        
+                        <div class="mobile-menu-header">
+                            <h3 class="mobile-menu-title">Quick Actions</h3>
+                        </div>
+                        
+                        <div class="mobile-menu-items">
+                            <template v-if="user.role !== 'admin'">
+                                <Link 
+                                    v-if="isBusinessOwner" 
+                                    :href="route('business.dashboard')" 
+                                    class="mobile-menu-card"
+                                >
+                                    <div class="menu-card-glow menu-card-glow-blue"></div>
+                                    <span class="menu-card-icon">📊</span>
+                                    <div class="menu-card-content">
+                                        <span class="menu-card-title">My Business</span>
+                                        <span class="menu-card-desc">Dashboard</span>
+                                    </div>
+                                    <div class="menu-card-arrow">→</div>
+                                </Link>
+                                <Link 
+                                    v-else
+                                    :href="route('business.register')" 
+                                    class="mobile-menu-card menu-card-highlight"
+                                >
+                                    <div class="menu-card-glow menu-card-glow-green"></div>
+                                    <span class="menu-card-icon">🚀</span>
+                                    <div class="menu-card-content">
+                                        <span class="menu-card-title">Start Business</span>
+                                        <span class="menu-card-desc">Register Now</span>
+                                    </div>
+                                    <div class="menu-card-arrow">→</div>
+                                </Link>
+                                
+                                <Link :href="route('services.index')" class="mobile-menu-card">
+                                    <div class="menu-card-glow menu-card-glow-purple"></div>
+                                    <span class="menu-card-icon">📄</span>
+                                    <div class="menu-card-content">
+                                        <span class="menu-card-title">Documents</span>
+                                        <span class="menu-card-desc">Track Requests</span>
+                                    </div>
+                                    <div class="menu-card-arrow">→</div>
+                                </Link>
+                                
+                                <Link :href="route('market.index')" class="mobile-menu-card">
+                                    <div class="menu-card-glow menu-card-glow-cyan"></div>
+                                    <span class="menu-card-icon">🌾</span>
+                                    <div class="menu-card-content">
+                                        <span class="menu-card-title">Market Prices</span>
+                                        <span class="menu-card-desc">Live Rates</span>
+                                    </div>
+                                    <div class="menu-card-arrow">→</div>
+                                </Link>
+                            </template>
+                            
+                            <Link :href="route('proposal')" class="mobile-menu-card">
+                                <div class="menu-card-glow menu-card-glow-orange"></div>
+                                <span class="menu-card-icon">📖</span>
                                 <div class="menu-card-content">
-                                    <span class="menu-card-title">My Business</span>
-                                    <span class="menu-card-desc">Dashboard</span>
+                                    <span class="menu-card-title">Proposal</span>
+                                    <span class="menu-card-desc">Documents</span>
                                 </div>
-                            </Link>
-                            <Link 
-                                v-else
-                                :href="route('business.register')" 
-                                class="mobile-menu-card menu-card-highlight"
-                            >
-                                <span class="menu-card-icon">🚀</span>
-                                <div class="menu-card-content">
-                                    <span class="menu-card-title">Start Business</span>
-                                    <span class="menu-card-desc">Register Now</span>
-                                </div>
+                                <div class="menu-card-arrow">→</div>
                             </Link>
                             
-                            <Link :href="route('services.index')" class="mobile-menu-card">
-                                <span class="menu-card-icon">📄</span>
+                            <Link :href="route('simulation')" class="mobile-menu-card">
+                                <div class="menu-card-glow menu-card-glow-pink"></div>
+                                <span class="menu-card-icon">📚</span>
                                 <div class="menu-card-content">
-                                    <span class="menu-card-title">Documents</span>
-                                    <span class="menu-card-desc">Track Requests</span>
+                                    <span class="menu-card-title">Handbook</span>
+                                    <span class="menu-card-desc">Guide</span>
                                 </div>
+                                <div class="menu-card-arrow">→</div>
                             </Link>
                             
-                            <Link :href="route('market.index')" class="mobile-menu-card">
-                                <span class="menu-card-icon">🌾</span>
+                            <Link :href="route('training')" class="mobile-menu-card">
+                                <div class="menu-card-glow menu-card-glow-yellow"></div>
+                                <span class="menu-card-icon">🎓</span>
                                 <div class="menu-card-content">
-                                    <span class="menu-card-title">Market Prices</span>
-                                    <span class="menu-card-desc">Live Rates</span>
+                                    <span class="menu-card-title">Training</span>
+                                    <span class="menu-card-desc">Assessment</span>
                                 </div>
+                                <div class="menu-card-arrow">→</div>
                             </Link>
-                        </template>
-                        
-                        <Link :href="route('proposal')" class="mobile-menu-card">
-                            <span class="menu-card-icon">📖</span>
-                            <div class="menu-card-content">
-                                <span class="menu-card-title">Proposal</span>
-                                <span class="menu-card-desc">Documents</span>
-                            </div>
-                        </Link>
-                        
-                        <Link :href="route('simulation')" class="mobile-menu-card">
-                            <span class="menu-card-icon">📚</span>
-                            <div class="menu-card-content">
-                                <span class="menu-card-title">Handbook</span>
-                                <span class="menu-card-desc">Guide</span>
-                            </div>
-                        </Link>
-                        
-                        <Link :href="route('training')" class="mobile-menu-card">
-                            <span class="menu-card-icon">🎓</span>
-                            <div class="menu-card-content">
-                                <span class="menu-card-title">Training</span>
-                                <span class="menu-card-desc">Assessment</span>
-                            </div>
-                        </Link>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -577,12 +612,14 @@ const mobileNavItems = computed(() => {
             <ChatAssistant />
         </div>
 
-        <!-- Loading Screen -->
+        <!-- Enhanced Loading Screen -->
         <Transition name="loading">
             <div v-if="isLoading" class="loading-screen">
                 <div class="loading-glow"></div>
                 <div class="loading-logo-wrapper">
-                    <div class="loading-ring"></div>
+                    <div class="loading-ring loading-ring-1"></div>
+                    <div class="loading-ring loading-ring-2"></div>
+                    <div class="loading-ring loading-ring-3"></div>
                     <img :src="logoUrl" class="loading-logo" alt="Loading" />
                 </div>
                 <div class="loading-dots">
@@ -595,24 +632,33 @@ const mobileNavItems = computed(() => {
 </template>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 /* Performance Optimizations */
 * {
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+}
+
+/* GPU Acceleration */
+.nav-container, .mobile-nav-bar, .mobile-center-btn, .loading-logo, .bg-glow {
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
 .app-container {
     min-height: 100vh;
     background: #000;
     color: #f1f5f9;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-    -webkit-font-smoothing: antialiased;
     position: relative;
     overflow-x: hidden;
 }
 
-/* Scroll Progress - Optimized */
-.scroll-progress-container {
+/* Enhanced Scroll Progress */
+.scroll-progress-wrapper {
     position: fixed;
     top: 0;
     left: 0;
@@ -621,18 +667,16 @@ const mobileNavItems = computed(() => {
     background: rgba(0, 0, 0, 0.3);
     z-index: 201;
     pointer-events: none;
-    will-change: transform;
 }
 
 .scroll-progress-bar {
     height: 100%;
     background: linear-gradient(to right, #3b82f6, #a855f7, #ec4899);
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
-    transition: width 0.1s ease-out;
-    will-change: width;
+    box-shadow: 0 0 24px rgba(59, 130, 246, 0.7);
+    transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Optimized Backgrounds */
+/* Premium Backgrounds */
 .bg-layer {
     position: fixed;
     inset: 0;
@@ -644,7 +688,6 @@ const mobileNavItems = computed(() => {
 .desktop-bg {
     position: absolute;
     inset: 0;
-    will-change: transform;
 }
 
 .mobile-bg {
@@ -673,7 +716,7 @@ const mobileNavItems = computed(() => {
 .bg-grain {
     position: absolute;
     inset: 0;
-    opacity: 0.03;
+    opacity: 0.035;
     mix-blend-mode: overlay;
     background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="3.5" numOctaves="4"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23n)"/%3E%3C/svg%3E');
 }
@@ -681,47 +724,57 @@ const mobileNavItems = computed(() => {
 .bg-glow {
     position: absolute;
     border-radius: 50%;
-    filter: blur(120px);
-    animation: float-glow 30s ease-in-out infinite;
-    will-change: transform;
+    filter: blur(130px);
+    animation: float-glow 35s ease-in-out infinite;
 }
 
 .bg-glow-1 {
     top: 10%;
     left: 20%;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.15), transparent 70%);
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.18), transparent 70%);
 }
 
 .bg-glow-2 {
     bottom: 10%;
     right: 20%;
-    width: 450px;
-    height: 450px;
-    background: radial-gradient(circle, rgba(236, 72, 153, 0.12), transparent 70%);
-    animation-delay: 5s;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.15), transparent 70%);
+    animation-delay: 7s;
 }
 
 .bg-glow-3 {
     top: 50%;
     left: 50%;
-    width: 380px;
-    height: 380px;
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.1), transparent 70%);
-    animation-delay: 10s;
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.12), transparent 70%);
+    animation-delay: 14s;
 }
 
 .bg-mesh {
     position: absolute;
     inset: 0;
     background: 
-        linear-gradient(125deg, transparent 0%, rgba(59, 130, 246, 0.03) 40%, transparent 70%),
-        linear-gradient(215deg, transparent 30%, rgba(236, 72, 153, 0.03) 60%, transparent 90%);
-    animation: mesh-shift 40s ease-in-out infinite;
+        linear-gradient(125deg, transparent 0%, rgba(59, 130, 246, 0.04) 40%, transparent 70%),
+        linear-gradient(215deg, transparent 30%, rgba(236, 72, 153, 0.04) 60%, transparent 90%);
+    animation: mesh-shift 50s ease-in-out infinite;
 }
 
-/* Desktop Navigation - Optimized */
+@keyframes float-glow {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(40px, -40px); }
+    66% { transform: translate(-35px, 35px); }
+}
+
+@keyframes mesh-shift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(25px, 25px); }
+}
+
+/* Enhanced Desktop Navigation */
 .desktop-nav {
     position: fixed;
     top: 1.5rem;
@@ -731,8 +784,7 @@ const mobileNavItems = computed(() => {
     display: none;
     justify-content: center;
     padding: 0 1rem;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
-    will-change: transform, opacity;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @media (min-width: 1024px) {
@@ -742,7 +794,7 @@ const mobileNavItems = computed(() => {
 }
 
 .desktop-nav.nav-hidden {
-    transform: translateY(-100px);
+    transform: translateY(-120px);
     opacity: 0;
 }
 
@@ -751,7 +803,7 @@ const mobileNavItems = computed(() => {
 }
 
 .desktop-nav.nav-scrolling-down {
-    transform: translateY(-100px);
+    transform: translateY(-120px);
     opacity: 0;
 }
 
@@ -760,18 +812,19 @@ const mobileNavItems = computed(() => {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.5rem 1rem;
+    padding: 0.625rem 1.25rem;
     border-radius: 9999px;
-    background: rgba(18, 18, 20, 0.8);
+    background: rgba(18, 18, 20, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
-    transition: all 0.3s;
-    will-change: transform;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .nav-container:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 24px 72px rgba(0, 0, 0, 0.95);
+    transform: translateY(-3px);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.95),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .nav-glass {
@@ -779,21 +832,21 @@ const mobileNavItems = computed(() => {
     inset: 0;
     border-radius: 9999px;
     backdrop-filter: blur(60px) saturate(200%);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03));
 }
 
-.nav-border {
+.nav-glow {
     position: absolute;
-    inset: -1px;
+    inset: -2px;
     border-radius: 9999px;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.3));
-    filter: blur(8px);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(168, 85, 247, 0.3), rgba(236, 72, 153, 0.4));
+    filter: blur(12px);
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity 0.4s;
     z-index: -1;
 }
 
-.nav-container:hover .nav-border {
+.nav-container:hover .nav-glow {
     opacity: 1;
 }
 
@@ -801,34 +854,45 @@ const mobileNavItems = computed(() => {
     display: flex;
     align-items: center;
     padding: 0 0.5rem;
-    transition: transform 0.3s;
-    will-change: transform;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .nav-logo:hover {
-    transform: scale(1.05);
+    transform: scale(1.08);
 }
 
-.logo-glow-wrapper {
+.logo-wrapper {
     position: relative;
+}
+
+.logo-glow {
+    position: absolute;
+    inset: -8px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.4), transparent);
+    filter: blur(20px);
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+
+.nav-logo:hover .logo-glow {
+    opacity: 1;
 }
 
 .logo-img {
     height: 4rem;
     width: auto;
-    filter: drop-shadow(0 10px 30px rgba(59, 130, 246, 0.4));
-    transition: filter 0.3s;
-    will-change: transform;
+    filter: drop-shadow(0 12px 35px rgba(59, 130, 246, 0.5));
+    transition: filter 0.4s;
 }
 
 .nav-logo:hover .logo-img {
-    filter: drop-shadow(0 12px 40px rgba(59, 130, 246, 0.6));
+    filter: drop-shadow(0 16px 45px rgba(59, 130, 246, 0.7));
 }
 
 .nav-divider {
     width: 2px;
-    height: 2rem;
-    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.2), transparent);
+    height: 2.25rem;
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.25), transparent);
 }
 
 .nav-links {
@@ -842,89 +906,105 @@ const mobileNavItems = computed(() => {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
+    padding: 0.625rem 1.125rem;
     border-radius: 9999px;
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 700;
     color: rgba(255, 255, 255, 0.6);
-    transition: all 0.3s;
-    will-change: transform;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .nav-link:hover {
     color: white;
-    background: rgba(255, 255, 255, 0.12);
-    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px) scale(1.02);
 }
 
 .nav-link.active {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(168, 85, 247, 0.15));
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(168, 85, 247, 0.2));
     color: white;
-    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 6px 24px rgba(59, 130, 246, 0.4);
 }
 
 .nav-link.active-danger {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(236, 72, 153, 0.25));
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(236, 72, 153, 0.3));
     color: rgb(252, 165, 165);
-    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 6px 24px rgba(239, 68, 68, 0.5);
 }
 
 .nav-link-cta {
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.25));
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(16, 185, 129, 0.3));
     color: rgb(134, 239, 172);
-    box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
+    box-shadow: 0 6px 24px rgba(34, 197, 94, 0.4);
 }
 
 .nav-link-icon {
     font-size: 1.125rem;
-    transition: transform 0.3s;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .nav-link:hover .nav-link-icon {
-    transform: scale(1.2);
+    transform: scale(1.25) rotate(8deg);
+}
+
+.nav-link-indicator {
+    position: absolute;
+    bottom: -0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgb(59, 130, 246);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+    animation: pulse 2s infinite;
+}
+
+.danger-indicator {
+    background: rgb(239, 68, 68);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
 }
 
 .nav-user {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding-left: 0.75rem;
+    gap: 0.875rem;
+    padding-left: 0.875rem;
 }
 
 .user-divider {
     width: 2px;
-    height: 2rem;
-    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.15), transparent);
+    height: 2.25rem;
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.2), transparent);
 }
 
 .user-btn {
     position: relative;
     display: flex;
-    height: 3rem;
-    width: 3rem;
+    height: 3.25rem;
+    width: 3.25rem;
     align-items: center;
     justify-content: center;
     border-radius: 9999px;
-    transition: transform 0.3s;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    will-change: transform;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 
 .user-btn:hover {
-    transform: scale(1.1);
+    transform: scale(1.12);
 }
 
 .user-avatar-ring {
     position: absolute;
-    inset: -3px;
+    inset: -4px;
     border-radius: 9999px;
     border: 2px solid transparent;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(168, 85, 247, 0.5)) border-box;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(168, 85, 247, 0.6)) border-box;
     -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity 0.4s;
 }
 
 .user-btn:hover .user-avatar-ring {
@@ -938,32 +1018,34 @@ const mobileNavItems = computed(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: 1.125rem;
+    font-weight: 800;
     color: white;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .user-status {
     position: absolute;
     bottom: 0;
     right: 0;
-    width: 0.75rem;
-    height: 0.75rem;
+    width: 0.875rem;
+    height: 0.875rem;
     background: rgb(34, 197, 94);
     border-radius: 9999px;
-    border: 2px solid rgba(18, 18, 20, 0.9);
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-    animation: pulse 2s infinite;
+    border: 3px solid rgba(18, 18, 20, 0.9);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.7);
+    animation: pulse 2.5s infinite;
 }
 
-/* Dropdown - Simplified */
+/* Dropdown */
 .dropdown-content {
-    padding: 0.5rem;
-    border-radius: 1.5rem;
+    padding: 0.75rem;
+    border-radius: 1.75rem;
     background: rgba(18, 18, 20, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
-    backdrop-filter: blur(60px);
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(60px) saturate(200%);
     max-height: 80vh;
     overflow-y: auto;
 }
@@ -977,16 +1059,17 @@ const mobileNavItems = computed(() => {
 }
 
 .dropdown-avatar {
-    width: 3rem;
-    height: 3rem;
+    width: 3.5rem;
+    height: 3.5rem;
     border-radius: 9999px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: 1.5rem;
+    font-weight: 800;
     color: white;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5),
+                inset 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .dropdown-user-info {
@@ -995,61 +1078,64 @@ const mobileNavItems = computed(() => {
 }
 
 .dropdown-name {
-    font-size: 0.875rem;
-    font-weight: 700;
+    font-size: 0.9375rem;
+    font-weight: 800;
     color: white;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .dropdown-email {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     color: rgb(156, 163, 175);
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-top: 0.125rem;
 }
 
 .admin-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
+    gap: 0.375rem;
+    padding: 0.375rem 0.625rem;
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 800;
     border-radius: 9999px;
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(236, 72, 153, 0.25));
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(236, 72, 153, 0.3));
     color: rgb(252, 165, 165);
     border: 1px solid rgba(239, 68, 68, 0.4);
     margin-top: 0.5rem;
 }
 
 .dropdown-section {
-    padding: 0.5rem 0;
+    padding: 0.625rem 0;
 }
 
 .dropdown-section-title {
-    padding: 0.5rem 1rem;
+    padding: 0.625rem 1rem;
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 800;
     color: rgba(255, 255, 255, 0.5);
     text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
 
 .dropdown-link {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: 1rem;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    border-radius: 1.125rem;
     color: rgb(209, 213, 219);
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     margin: 0 0.5rem;
+    font-weight: 600;
 }
 
 .dropdown-link:hover {
     color: white;
-    background: rgba(255, 255, 255, 0.10);
-    transform: translateX(2px);
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateX(3px) scale(1.01);
 }
 
 .dropdown-link-danger {
@@ -1057,20 +1143,20 @@ const mobileNavItems = computed(() => {
 }
 
 .dropdown-link-danger:hover {
-    background: rgba(239, 68, 68, 0.15);
+    background: rgba(239, 68, 68, 0.18);
 }
 
 .dropdown-divider {
     height: 1px;
-    margin: 0.5rem 1rem;
+    margin: 0.625rem 1rem;
     background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 .dropdown-footer {
-    padding: 0.5rem 0;
+    padding: 0.625rem 0;
 }
 
-/* Mobile Navigation - Optimized */
+/* Enhanced Mobile Navigation */
 .mobile-nav {
     position: fixed;
     bottom: 0;
@@ -1078,8 +1164,7 @@ const mobileNavItems = computed(() => {
     right: 0;
     z-index: 40;
     display: block;
-    transition: transform 0.3s;
-    will-change: transform;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @media (min-width: 1024px) {
@@ -1089,16 +1174,16 @@ const mobileNavItems = computed(() => {
 }
 
 .mobile-nav.mobile-nav-hidden {
-    transform: translateY(100%);
+    transform: translateY(120%);
 }
 
 .mobile-nav-wrapper {
     position: relative;
 }
 
-.mobile-center-btn-container {
+.mobile-center-btn-wrapper {
     position: absolute;
-    top: -2.5rem;
+    top: -2.75rem;
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
@@ -1106,6 +1191,11 @@ const mobileNavItems = computed(() => {
 
 .mobile-center-btn {
     position: relative;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mobile-center-btn:active {
+    transform: scale(0.9);
 }
 
 .center-btn-pulse {
@@ -1113,51 +1203,73 @@ const mobileNavItems = computed(() => {
     inset: 0;
     border-radius: 9999px;
     background: linear-gradient(135deg, rgb(168, 85, 247), rgb(236, 72, 153));
-    animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-    will-change: transform, opacity;
+    animation: ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 .center-btn-glow {
     position: absolute;
     inset: 0;
     border-radius: 9999px;
-    filter: blur(1.5rem);
+    filter: blur(24px);
     background: linear-gradient(135deg, rgb(147, 51, 234), rgb(236, 72, 153));
-    opacity: 0.5;
-    will-change: opacity;
+    opacity: 0.6;
 }
 
 .center-btn-inner {
-    width: 4.5rem;
-    height: 4.5rem;
+    width: 5rem;
+    height: 5rem;
     border-radius: 9999px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, rgb(147, 51, 234), rgb(236, 72, 153));
-    box-shadow: 0 10px 40px rgba(217, 70, 239, 0.6);
-    transition: transform 0.3s;
-    will-change: transform;
+    box-shadow: 0 12px 48px rgba(217, 70, 239, 0.7);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.center-btn-inner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1), transparent);
+    border-radius: 9999px;
 }
 
 .center-btn-icon {
-    font-size: 1.75rem;
-    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+    font-size: 2rem;
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
+    position: relative;
+    z-index: 1;
 }
 
 .mobile-nav-bar {
     position: relative;
     background: rgba(18, 18, 20, 0.98);
-    backdrop-filter: blur(60px);
+    backdrop-filter: blur(60px) saturate(200%);
     border-top: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.9);
+    box-shadow: 0 -25px 70px rgba(0, 0, 0, 0.9),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
     padding: 1rem 1rem 2rem;
 }
 
 .mobile-nav-glass {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    background: linear-gradient(to top, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03));
+}
+
+.mobile-nav-glow {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(59, 130, 246, 0.05), transparent);
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+
+.mobile-nav-bar:hover .mobile-nav-glow {
+    opacity: 1;
 }
 
 .mobile-nav-items {
@@ -1170,25 +1282,41 @@ const mobileNavItems = computed(() => {
 }
 
 .mobile-nav-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.75rem 0.5rem;
-    border-radius: 1rem;
+    gap: 0.375rem;
+    padding: 0.875rem 0.625rem;
+    border-radius: 1.25rem;
     color: rgba(255, 255, 255, 0.5);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+}
+
+.nav-item-ripple {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 1.25rem;
+    transform: scale(0);
+    opacity: 0;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-nav-item:active .nav-item-ripple {
+    transform: scale(2);
+    opacity: 0;
 }
 
 .mobile-nav-item:active {
-    transform: scale(0.95);
+    transform: scale(0.92);
 }
 
 .mobile-nav-item-active {
     color: white;
-    background: rgba(59, 130, 246, 0.15);
-    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.18);
+    box-shadow: 0 6px 24px rgba(59, 130, 246, 0.4);
 }
 
 .mobile-nav-item-danger {
@@ -1197,44 +1325,65 @@ const mobileNavItems = computed(() => {
 
 .mobile-nav-item-danger.mobile-nav-item-active {
     color: rgb(252, 165, 165);
-    background: rgba(239, 68, 68, 0.15);
-    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.18);
+    box-shadow: 0 6px 24px rgba(239, 68, 68, 0.4);
 }
 
 .mobile-nav-icon {
-    font-size: 1.5rem;
-    transition: transform 0.3s;
+    font-size: 1.625rem;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    z-index: 1;
 }
 
 .mobile-nav-item-active .mobile-nav-icon {
-    transform: scale(1.2);
-    animation: bounce-soft 0.6s ease-out;
+    transform: scale(1.25);
+    animation: bounce-soft 0.7s ease-out;
+}
+
+@keyframes bounce-soft {
+    0%, 100% { transform: scale(1.25); }
+    50% { transform: scale(1.4); }
 }
 
 .mobile-nav-label {
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.8125rem;
+    font-weight: 700;
     text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+.mobile-nav-indicator {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(59, 130, 246);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+    animation: pulse 2s infinite;
 }
 
 .mobile-home-indicator {
     position: absolute;
-    bottom: 0.5rem;
+    bottom: 0.625rem;
     left: 50%;
     transform: translateX(-50%);
-    width: 8rem;
+    width: 9rem;
     height: 0.375rem;
     border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.25);
 }
 
-/* Mobile Menu Overlay - Enhanced */
+/* Enhanced Mobile Menu */
 .mobile-menu {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 6rem;
+    bottom: 6.5rem;
     z-index: 50;
     overflow-y: auto;
     padding: 1.5rem 1rem 2rem;
@@ -1243,42 +1392,61 @@ const mobileNavItems = computed(() => {
 
 .mobile-profile {
     position: relative;
-    background: rgba(18, 18, 20, 0.95);
-    border-radius: 2rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 1.5rem;
     margin-bottom: 1rem;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
-    backdrop-filter: blur(60px);
 }
 
 .mobile-profile-glass {
+    position: relative;
+    background: rgba(18, 18, 20, 0.95);
+    border-radius: 2.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 1.75rem;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(60px) saturate(200%);
+    overflow: hidden;
+}
+
+.mobile-profile-glow {
     position: absolute;
     inset: 0;
-    border-radius: 2rem;
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(168, 85, 247, 0.05));
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+
+.mobile-profile-glass:hover .mobile-profile-glow {
+    opacity: 1;
+}
+
+.mobile-profile-shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.08), transparent);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
 }
 
 .mobile-profile-content {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 1.125rem;
+    margin-bottom: 1.125rem;
 }
 
 .mobile-profile-avatar {
     position: relative;
-    width: 4rem;
-    height: 4rem;
-    border-radius: 1.5rem;
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 1.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.75rem;
+    font-weight: 800;
     color: white;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5),
+                inset 0 2px 8px rgba(0, 0, 0, 0.3);
     flex-shrink: 0;
 }
 
@@ -1286,13 +1454,13 @@ const mobileNavItems = computed(() => {
     position: absolute;
     bottom: 0;
     right: 0;
-    width: 1rem;
-    height: 1rem;
+    width: 1.125rem;
+    height: 1.125rem;
     background: rgb(34, 197, 94);
     border-radius: 9999px;
     border: 3px solid rgba(18, 18, 20, 0.95);
-    box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
-    animation: pulse 2s infinite;
+    box-shadow: 0 0 16px rgba(34, 197, 94, 0.7);
+    animation: pulse 2.5s infinite;
 }
 
 .mobile-profile-info {
@@ -1301,8 +1469,8 @@ const mobileNavItems = computed(() => {
 }
 
 .mobile-profile-name {
-    font-size: 1.125rem;
-    font-weight: 700;
+    font-size: 1.25rem;
+    font-weight: 800;
     color: white;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1310,38 +1478,39 @@ const mobileNavItems = computed(() => {
 }
 
 .mobile-profile-email {
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     color: rgb(156, 163, 175);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    margin-top: 0.125rem;
 }
 
 .mobile-profile-badges {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+    gap: 0.625rem;
+    margin-top: 0.625rem;
 }
 
 .profile-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 700;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 800;
     border-radius: 9999px;
     border: 1px solid;
 }
 
 .profile-badge-admin {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(236, 72, 153, 0.25));
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(236, 72, 153, 0.3));
     color: rgb(252, 165, 165);
     border-color: rgba(239, 68, 68, 0.4);
 }
 
 .profile-badge-user {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(168, 85, 247, 0.25));
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(168, 85, 247, 0.3));
     color: rgb(147, 197, 253);
     border-color: rgba(59, 130, 246, 0.4);
 }
@@ -1350,64 +1519,82 @@ const mobileNavItems = computed(() => {
     position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
+    gap: 0.875rem;
 }
 
 .profile-action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    padding: 0.875rem 1rem;
-    border-radius: 1rem;
-    font-size: 0.875rem;
-    font-weight: 600;
+    gap: 0.625rem;
+    padding: 1rem 1.125rem;
+    border-radius: 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
     color: white;
-    background: rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    transition: all 0.3s;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .profile-action-btn:active {
-    transform: scale(0.97);
+    transform: scale(0.95);
 }
 
 .profile-action-btn-danger {
-    background: rgba(239, 68, 68, 0.15);
+    background: rgba(239, 68, 68, 0.18);
     border-color: rgba(239, 68, 68, 0.3);
     color: rgb(252, 165, 165);
 }
 
 .profile-action-btn-danger:hover {
-    background: rgba(239, 68, 68, 0.25);
+    background: rgba(239, 68, 68, 0.28);
 }
 
-/* Mobile Menu Grid - Enhanced */
+/* Mobile Menu Grid */
 .mobile-menu-grid {
     position: relative;
-    background: rgba(18, 18, 20, 0.95);
-    border-radius: 2rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 1.5rem;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
-    backdrop-filter: blur(60px);
 }
 
 .mobile-menu-glass {
+    position: relative;
+    background: rgba(18, 18, 20, 0.95);
+    border-radius: 2.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 1.75rem;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(60px) saturate(200%);
+    overflow: hidden;
+}
+
+.mobile-menu-glow {
     position: absolute;
     inset: 0;
-    border-radius: 2rem;
-    background: linear-gradient(135deg, rgba(168, 85, 247, 0.05), rgba(236, 72, 153, 0.03));
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), rgba(236, 72, 153, 0.04));
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+
+.mobile-menu-glass:hover .mobile-menu-glow {
+    opacity: 1;
+}
+
+.mobile-menu-shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.08), transparent);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
 }
 
 .mobile-menu-header {
     position: relative;
-    margin-bottom: 1rem;
+    margin-bottom: 1.125rem;
 }
 
 .mobile-menu-title {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: 1.375rem;
+    font-weight: 800;
     color: white;
     background: linear-gradient(135deg, rgb(255, 255, 255), rgb(209, 213, 219));
     -webkit-background-clip: text;
@@ -1419,7 +1606,7 @@ const mobileNavItems = computed(() => {
     position: relative;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    gap: 0.875rem;
 }
 
 .mobile-menu-card {
@@ -1427,60 +1614,91 @@ const mobileNavItems = computed(() => {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1.25rem;
-    border-radius: 1.5rem;
-    background: rgba(255, 255, 255, 0.05);
+    gap: 0.875rem;
+    padding: 1.375rem;
+    border-radius: 1.75rem;
+    background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     overflow: hidden;
 }
 
-.mobile-menu-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
 .mobile-menu-card:active {
-    transform: scale(0.97);
+    transform: scale(0.95);
 }
 
-.mobile-menu-card:active::before {
+.menu-card-glow {
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    filter: blur(40px);
+    transition: opacity 0.4s;
+    border-radius: 50%;
+}
+
+.menu-card-glow-blue {
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.4), transparent);
+}
+
+.menu-card-glow-green {
+    background: radial-gradient(circle, rgba(34, 197, 94, 0.4), transparent);
+}
+
+.menu-card-glow-purple {
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.4), transparent);
+}
+
+.menu-card-glow-cyan {
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.4), transparent);
+}
+
+.menu-card-glow-orange {
+    background: radial-gradient(circle, rgba(249, 115, 22, 0.4), transparent);
+}
+
+.menu-card-glow-pink {
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent);
+}
+
+.menu-card-glow-yellow {
+    background: radial-gradient(circle, rgba(234, 179, 8, 0.4), transparent);
+}
+
+.mobile-menu-card:hover .menu-card-glow {
     opacity: 1;
 }
 
 .menu-card-highlight {
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.1));
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.12));
     border-color: rgba(34, 197, 94, 0.3);
 }
 
-.menu-card-highlight::before {
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), transparent);
-}
-
 .menu-card-icon {
-    font-size: 2rem;
-    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+    font-size: 2.25rem;
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.3));
+    position: relative;
+    z-index: 1;
 }
 
 .menu-card-content {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.375rem;
+    position: relative;
+    z-index: 1;
 }
 
 .menu-card-title {
-    font-size: 0.9375rem;
-    font-weight: 700;
+    font-size: 1rem;
+    font-weight: 800;
     color: white;
 }
 
 .menu-card-desc {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     color: rgb(156, 163, 175);
 }
 
@@ -1492,23 +1710,38 @@ const mobileNavItems = computed(() => {
     color: rgb(110, 231, 183);
 }
 
+.menu-card-arrow {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    font-size: 1.25rem;
+    color: rgba(255, 255, 255, 0.4);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1;
+}
+
+.mobile-menu-card:hover .menu-card-arrow {
+    color: rgba(255, 255, 255, 0.7);
+    transform: translateX(3px);
+}
+
 /* Mobile Backdrop */
 .mobile-backdrop {
     position: fixed;
     inset: 0;
     z-index: 45;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
 }
 
-/* Main Content - Optimized */
+/* Main Content */
 .main-content {
     position: relative;
     z-index: 10;
     min-height: 100vh;
     padding-top: 2rem;
     padding-bottom: 8rem;
-    transition: opacity 0.3s;
+    transition: opacity 0.4s;
 }
 
 @media (min-width: 1024px) {
@@ -1529,7 +1762,7 @@ const mobileNavItems = computed(() => {
     z-index: 30;
 }
 
-/* Loading Screen - Enhanced */
+/* Enhanced Loading Screen */
 .loading-screen {
     position: fixed;
     inset: 0;
@@ -1538,8 +1771,8 @@ const mobileNavItems = computed(() => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.95);
-    backdrop-filter: blur(40px);
+    background: rgba(0, 0, 0, 0.97);
+    backdrop-filter: blur(50px);
 }
 
 .loading-glow {
@@ -1547,98 +1780,76 @@ const mobileNavItems = computed(() => {
     inset: 0;
     background: radial-gradient(
         circle at center,
-        rgba(59, 130, 246, 0.15),
-        rgba(168, 85, 247, 0.1),
+        rgba(59, 130, 246, 0.18),
+        rgba(168, 85, 247, 0.12),
         transparent 70%
     );
-    animation: pulse-glow 3s ease-in-out infinite;
+    animation: pulse-glow 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
 }
 
 .loading-logo-wrapper {
     position: relative;
-    width: 8rem;
-    height: 8rem;
-    margin-bottom: 2rem;
+    width: 9rem;
+    height: 9rem;
+    margin-bottom: 2.5rem;
 }
 
 .loading-ring {
     position: absolute;
-    inset: -1rem;
+    inset: -1.25rem;
     border: 3px solid transparent;
+    border-radius: 9999px;
+}
+
+.loading-ring-1 {
     border-top-color: rgb(59, 130, 246);
+    animation: spin 2.5s linear infinite;
+}
+
+.loading-ring-2 {
     border-right-color: rgb(168, 85, 247);
-    border-radius: 9999px;
+    animation: spin 3s linear infinite reverse;
+}
+
+.loading-ring-3 {
+    border-bottom-color: rgb(236, 72, 153);
     animation: spin 2s linear infinite;
-}
-
-.loading-logo {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    filter: drop-shadow(0 20px 60px rgba(59, 130, 246, 0.6));
-    animation: float 3s ease-in-out infinite;
-}
-
-.loading-dots {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.loading-dot {
-    width: 0.75rem;
-    height: 0.75rem;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, rgb(59, 130, 246), rgb(168, 85, 247));
-    animation: bounce-dot 1.2s ease-in-out infinite;
-}
-
-.loading-text {
-    font-size: 1rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.7);
-    letter-spacing: 0.05em;
-}
-
-/* Animations */
-@keyframes float-glow {
-    0%, 100% { transform: translate(0, 0); }
-    33% { transform: translate(30px, -30px); }
-    66% { transform: translate(-30px, 30px); }
-}
-
-@keyframes mesh-shift {
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(20px, 20px); }
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-@keyframes ping {
-    0% { transform: scale(1); opacity: 1; }
-    75%, 100% { transform: scale(2); opacity: 0; }
-}
-
-@keyframes bounce-soft {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.2); }
-}
-
-@keyframes pulse-glow {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
 }
 
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
+.loading-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 25px 70px rgba(59, 130, 246, 0.7));
+    animation: float 3.5s ease-in-out infinite;
+}
+
 @keyframes float {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+    50% { transform: translateY(-12px); }
+}
+
+.loading-dots {
+    display: flex;
+    gap: 0.625rem;
+    margin-bottom: 1.25rem;
+}
+
+.loading-dot {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgb(59, 130, 246), rgb(168, 85, 247));
+    animation: bounce-dot 1.4s ease-in-out infinite;
 }
 
 @keyframes bounce-dot {
@@ -1646,25 +1857,43 @@ const mobileNavItems = computed(() => {
     40% { transform: scale(1); opacity: 1; }
 }
 
+.loading-text {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.08em;
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes ping {
+    0% { transform: scale(1); opacity: 1; }
+    75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+
 /* Transitions */
 .mobile-menu-enter-active,
 .mobile-menu-leave-active {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .mobile-menu-enter-from {
     opacity: 0;
-    transform: translateY(2rem);
+    transform: translateY(2.5rem);
 }
 
 .mobile-menu-leave-to {
     opacity: 0;
-    transform: translateY(-2rem);
+    transform: translateY(-2.5rem);
 }
 
 .backdrop-enter-active,
 .backdrop-leave-active {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .backdrop-enter-from,
@@ -1673,11 +1902,11 @@ const mobileNavItems = computed(() => {
 }
 
 .loading-enter-active {
-    transition: all 0.2s ease-out;
+    transition: all 0.3s ease-out;
 }
 
 .loading-leave-active {
-    transition: all 0.3s ease-in;
+    transition: all 0.4s ease-in;
 }
 
 .loading-enter-from {
@@ -1686,7 +1915,7 @@ const mobileNavItems = computed(() => {
 
 .loading-leave-to {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.96);
 }
 
 /* Scrollbar Styling */
@@ -1703,31 +1932,31 @@ const mobileNavItems = computed(() => {
 
 .dropdown-content::-webkit-scrollbar-thumb,
 .mobile-menu::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.25);
     border-radius: 9999px;
 }
 
 .dropdown-content::-webkit-scrollbar-thumb:hover,
 .mobile-menu::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.35);
 }
 
 /* Responsive Enhancements */
 @media (max-width: 374px) {
     .mobile-nav-items {
-        gap: 0.25rem;
+        gap: 0.375rem;
     }
     
     .mobile-nav-item {
-        padding: 0.5rem 0.25rem;
+        padding: 0.625rem 0.375rem;
     }
     
     .mobile-nav-icon {
-        font-size: 1.25rem;
+        font-size: 1.375rem;
     }
     
     .mobile-nav-label {
-        font-size: 0.625rem;
+        font-size: 0.75rem;
     }
 }
 
@@ -1737,7 +1966,7 @@ const mobileNavItems = computed(() => {
     }
     
     .mobile-nav-items {
-        max-width: 36rem;
+        max-width: 40rem;
     }
 }
 
@@ -1782,7 +2011,7 @@ const mobileNavItems = computed(() => {
     }
     
     .mobile-menu {
-        padding-top: calc(1.5rem);
+        padding-top: calc(1.5rem + env(safe-area-inset-top));
         padding-bottom: calc(2rem + env(safe-area-inset-bottom));
     }
 }
@@ -1791,8 +2020,8 @@ const mobileNavItems = computed(() => {
 @media (prefers-contrast: high) {
     .nav-container,
     .mobile-nav-bar,
-    .mobile-profile,
-    .mobile-menu-grid {
+    .mobile-profile-glass,
+    .mobile-menu-glass {
         border-width: 2px;
     }
     
