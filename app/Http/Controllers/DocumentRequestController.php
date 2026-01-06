@@ -46,6 +46,18 @@ class DocumentRequestController extends Controller
         ]);
     }
 
+    public function show($id)
+{
+    $request = DocumentRequest::findOrFail($id);
+
+    // Security: Only allow viewing own requests (unless admin)
+    if ($request->user_id !== auth()->id()) {
+        abort(403, 'ACCESS DENIED: You do not have permission to view this dossier.');
+    }
+
+    // Redirect to the existing storyboard/journey page
+    return redirect()->route('request.story', $id);
+}
     // =========================================================================
     // 2. THE ENGINE: Dynamic Form Configuration
     // =========================================================================

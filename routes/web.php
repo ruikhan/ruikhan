@@ -80,34 +80,36 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')
 Route::middleware('auth')->group(function () {
     
     // ============================================================================
-    // ✅ NOTIFICATION API ROUTES (Session-based auth)
+    // ✅ NOTIFICATION ROUTES
     // ============================================================================
+    
+    // 🔹 Web Route - Full notifications page (Inertia)
+    Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.index');
+    
+    // 🔹 API Routes - AJAX calls from NotificationCenter component
     Route::prefix('api')->name('api.')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
         Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    });
+    
+    // ✅ Profile Check API Routes
+    Route::prefix('api/profile')->name('api.profile.')->group(function () {
+        Route::get('/check', function () {
+            $profileService = app(\App\Services\ProfileService::class);
+            return response()->json([
+                'has_profile' => $profileService->hasProfile(auth()->id()),
+                'profile_status' => $profileService->needsAttention(auth()->id()),
+            ]);
+        })->name('check');
         
-        // ✅ NEW: Profile Check API Routes (for AJAX)
-        Route::prefix('profile')->name('profile.')->group(function () {
-            
-            // Check if user has profile (for frontend conditional rendering)
-            Route::get('/check', function () {
-                $profileService = app(\App\Services\ProfileService::class);
-                return response()->json([
-                    'has_profile' => $profileService->hasProfile(auth()->id()),
-                    'profile_status' => $profileService->needsAttention(auth()->id()),
-                ]);
-            })->name('check');
-            
-            // Get profile summary (for quick displays)
-            Route::get('/summary', function () {
-                $profileService = app(\App\Services\ProfileService::class);
-                return response()->json([
-                    'summary' => $profileService->getProfileSummary(auth()->id()),
-                    'statistics' => $profileService->getStatistics(auth()->id()),
-                ]);
-            })->name('summary');
-        });
+        Route::get('/summary', function () {
+            $profileService = app(\App\Services\ProfileService::class);
+            return response()->json([
+                'summary' => $profileService->getProfileSummary(auth()->id()),
+                'statistics' => $profileService->getStatistics(auth()->id()),
+            ]);
+        })->name('summary');
     });
     
     // ============================================================================

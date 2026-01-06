@@ -3,75 +3,86 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
+use Inertia\Inertia;
 
 class NotificationController extends Controller
 {
     /**
-     * Get all notifications for the authenticated user
+     * Display the full notifications page (Inertia view)
      */
-    public function index(Request $request): JsonResponse
+    public function page()
     {
-        $user = $request->user();
+        $notifications = auth()->user()
+            ->notifications()
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
+        return Inertia::render('Notifications/Index', [
+            'notifications' => $notifications,
+            'unread_count' => auth()->user()->unreadNotifications()->count()
+        ]);
+    }
+
+    /**
+     * Get notifications via API (AJAX/JSON)
+     */
+    public function index()
+    {
+        $user = auth()->user();
+        
         $notifications = $user->notifications()
-            ->latest()
-            ->limit(50)
-            ->get()
-            ->map(function ($notification) {
-                return [
-                    'id' => $notification->id,
-                    'type' => $notification->type,
-                    'data' => $notification->data,
-                    'read_at' => $notification->read_at,
-                    'created_at' => $notification->created_at,
-                ];
-            });
-
-        $unreadCount = $user->unreadNotifications()->count();
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
 
         return response()->json([
             'notifications' => $notifications,
-            'unread_count' => $unreadCount,
+            'unread_count' => $user->unreadNotifications()->count()
         ]);
     }
 
     /**
      * Mark a specific notification as read
      */
-    public function markAsRead(Request $request, string $id): JsonResponse
+    public function markAsRead($id)
     {
-        $user = $request->user();
-        
-        $notification = $user->notifications()->find($id);
+        try {
+            $notification = auth()->user()
+                ->notifications()
+                ->where('id', $id)
+                ->firstOrFail();
 
-        if (!$notification) {
+            $notification->markAsRead();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Notification marked as read'
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Notification not found'
             ], 404);
         }
-
-        $notification->markAsRead();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Notification marked as read'
-        ]);
     }
 
     /**
      * Mark all notifications as read
      */
-    public function markAllAsRead(Request $request): JsonResponse
+    public function markAllAsRead()
     {
-        $user = $request->user();
-        
-        $user->unreadNotifications->markAsRead();
+        try {
+            auth()->user()->unreadNotifications->markAsRead();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'All notifications marked as read'
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'All notifications marked as read'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to mark notifications as read'
+            ], 500);
+        }
     }
 }

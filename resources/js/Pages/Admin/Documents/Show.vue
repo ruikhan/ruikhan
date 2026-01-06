@@ -1,8 +1,8 @@
 <script setup>
+import RequestTracker from '@/Components/RequestTracker.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-// ✅ IMPORT THE NEW COMPONENT
-import RequestTracker from '@/Components/RequestTracker.vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({ 
     docRequest: Object, 
@@ -16,11 +16,81 @@ const form = useForm({
     appointment_date: props.docRequest.appointment_date || ''
 });
 
+const isSubmitting = ref(false);
+
+// Character counter for admin remarks
+const remainingChars = computed(() => {
+    return 1000 - (form.admin_remarks?.length || 0);
+});
+
+// Minimum datetime for appointment (now)
+const minDateTime = computed(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+});
+
+// Parse attachments (handle both array and JSON string)
+const attachmentsList = computed(() => {
+    if (!props.docRequest.attachments) return [];
+    
+    // If it's already an array
+    if (Array.isArray(props.docRequest.attachments)) {
+        return props.docRequest.attachments;
+    }
+    
+    // If it's a JSON string
+    try {
+        return JSON.parse(props.docRequest.attachments);
+    } catch {
+        // If it's a single string path
+        return [props.docRequest.attachments];
+    }
+});
+
 const submitUpdate = () => {
+    // Prevent duplicate submissions
+    if (isSubmitting.value || form.processing) return;
+
+    // Confirm critical actions
+    if (form.status === 'rejected' && props.docRequest.status !== 'rejected') {
+        if (!confirm('⚠️ Are you sure you want to REJECT this request? The user will be notified.')) {
+            return;
+        }
+    }
+
+    // Validate appointment date if status is ready_for_pickup
+    if (form.status === 'ready_for_pickup' && !form.appointment_date) {
+        alert('⚠️ Please set a pickup appointment date.');
+        return;
+    }
+
+    isSubmitting.value = true;
+
     form.patch(route('admin.documents.update', props.docRequest.id), {
         preserveScroll: true,
         onSuccess: () => {
-            // Optional: Add toast notification trigger here
+            isSubmitting.value = false;
+            alert('✅ Document updated successfully! Notification sent to user.');
+        },
+        onError: (errors) => {
+            isSubmitting.value = false;
+            console.error('Update failed:', errors);
+            
+            // Show specific error message
+            const errorMessages = Object.values(errors).flat();
+            if (errorMessages.length > 0) {
+                alert('❌ Update failed: ' + errorMessages.join(', '));
+            } else {
+                alert('❌ Failed to update document. Please try again.');
+            }
+        },
+        onFinish: () => {
+            isSubmitting.value = false;
         }
     });
 };
@@ -29,6 +99,18 @@ const submitUpdate = () => {
 const formatKey = (key) => {
     if (!key) return '';
     return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
+// Format datetime for display
+const formatDateTime = (datetime) => {
+    if (!datetime) return 'Not set';
+    return new Date(datetime).toLocaleString('en-PH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 };
 </script>
 
@@ -114,13 +196,22 @@ const formatKey = (key) => {
                     <div class="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
                          <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4 border-b border-white/5 pb-2">Evidence / Attachments</h3>
                          
-                         <div v-if="docRequest.attachments" class="space-y-3">
-                            <a :href="`/storage/${docRequest.attachments}`" target="_blank" class="flex items-center gap-3 p-3 rounded-lg bg-blue-600/10 border border-blue-500/20 hover:bg-blue-600/20 transition-all group cursor-pointer">
+                         <div v-if="attachmentsList.length > 0" class="space-y-3">
+                            <a 
+                                v-for="(attachment, index) in attachmentsList" 
+                                :key="index"
+                                :href="`/storage/${attachment}`" 
+                                target="_blank" 
+                                class="flex items-center gap-3 p-3 rounded-lg bg-blue-600/10 border border-blue-500/20 hover:bg-blue-600/20 transition-all group cursor-pointer"
+                            >
                                 <div class="w-10 h-10 rounded bg-blue-500/20 flex items-center justify-center text-lg">📄</div>
-                                <div class="overflow-hidden">
-                                    <p class="text-sm font-bold text-blue-100 truncate">View Document</p>
+                                <div class="flex-1 overflow-hidden">
+                                    <p class="text-sm font-bold text-blue-100 truncate">Attachment {{ index + 1 }}</p>
                                     <p class="text-[10px] text-blue-300 uppercase">Click to Open</p>
                                 </div>
+                                <svg class="w-4 h-4 text-blue-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
                             </a>
                          </div>
                          <div v-else class="text-sm text-slate-500 italic text-center py-4">
@@ -162,17 +253,36 @@ const formatKey = (key) => {
                             </dl>
                         </div>
 
-                        <div v-if="docRequest.remarks" class="mt-6 pt-4 border-t border-white/5">
+                        <div v-if="docRequest.user_remarks" class="mt-6 pt-4 border-t border-white/5">
                             <label class="block text-[10px] text-slate-500 uppercase font-bold mb-2">User Remarks</label>
-                            <p class="text-sm text-slate-300 italic">"{{ docRequest.remarks }}"</p>
+                            <p class="text-sm text-slate-300 italic">"{{ docRequest.user_remarks }}"</p>
+                        </div>
+
+                        <div v-if="docRequest.updated_at" class="mt-4 text-xs text-slate-500">
+                            Last updated: {{ formatDateTime(docRequest.updated_at) }}
                         </div>
                     </div>
 
-                    <RequestTracker :status="docRequest.status" />
+                    <RequestTracker 
+                        :status="docRequest.status" 
+                        :department="docRequest.department" 
+                    />
 
-                    <div class="bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+                    <div class="bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl relative">
+                        <!-- Loading Overlay -->
+                        <div 
+                            v-if="form.processing || isSubmitting" 
+                            class="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-2xl flex items-center justify-center z-50"
+                        >
+                            <div class="text-center">
+                                <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
+                                <p class="text-white font-bold text-lg">Updating Record...</p>
+                                <p class="text-slate-400 text-sm mt-2">Sending notification to user</p>
+                            </div>
+                        </div>
+
                         <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
                             Official Action Console
                         </h3>
                         
@@ -183,46 +293,81 @@ const formatKey = (key) => {
                                     <label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Update Status</label>
                                     <select 
                                         v-model="form.status"
-                                        class="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer hover:bg-white/5 transition-colors"
+                                        :disabled="form.processing || isSubmitting"
+                                        class="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <option value="pending">Pending Review</option>
-                                        <option value="processing">Processing</option>
-                                        <option value="ready_for_pickup">Ready for Pickup</option>
-                                        <option value="completed">Completed / Claimed</option>
-                                        <option value="rejected">Rejected</option>
+                                        <option value="pending">⏳ Pending Review</option>
+                                        <option value="processing">🔄 Processing</option>
+                                        <option value="ready_for_pickup">✅ Ready for Pickup</option>
+                                        <option value="completed">🎉 Completed / Claimed</option>
+                                        <option value="rejected">❌ Rejected</option>
                                     </select>
+                                    <p v-if="form.errors.status" class="text-red-400 text-xs mt-1">
+                                        {{ form.errors.status }}
+                                    </p>
                                 </div>
 
                                 <div v-if="form.status === 'ready_for_pickup'" class="animate-fade-in">
-                                    <label class="block text-xs font-bold text-green-400 mb-2 uppercase">Pickup Schedule</label>
+                                    <label class="block text-xs font-bold text-green-400 mb-2 uppercase">
+                                        📅 Pickup Schedule *
+                                    </label>
                                     <input 
                                         type="datetime-local"
                                         v-model="form.appointment_date"
-                                        class="w-full bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-green-100 focus:ring-2 focus:ring-green-500"
+                                        :min="minDateTime"
+                                        :disabled="form.processing || isSubmitting"
+                                        class="w-full bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-green-100 focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                                        required
                                     >
-                                    <p class="text-[10px] text-slate-500 mt-1">*User will be notified of this date.</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">
+                                        ⚠️ User will be notified via email of this appointment
+                                    </p>
+                                    <p v-if="form.errors.appointment_date" class="text-red-400 text-xs mt-1">
+                                        {{ form.errors.appointment_date }}
+                                    </p>
                                 </div>
                             </div>
 
                             <div class="flex flex-col h-full">
-                                <label class="block text-xs font-bold text-slate-400 mb-2 uppercase">Admin Remarks / Instructions</label>
+                                <label class="flex justify-between items-center mb-2">
+                                    <span class="text-xs font-bold text-slate-400 uppercase">Admin Remarks / Instructions</span>
+                                    <span 
+                                        class="text-xs font-mono"
+                                        :class="remainingChars < 100 ? 'text-red-400 font-bold' : 'text-slate-500'"
+                                    >
+                                        {{ remainingChars }} / 1000
+                                    </span>
+                                </label>
                                 <textarea 
                                     v-model="form.admin_remarks"
-                                    class="flex-1 w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 resize-none text-sm mb-4"
-                                    placeholder="Enter instructions for the applicant (e.g., 'Bring Valid ID')..."
+                                    :disabled="form.processing || isSubmitting"
+                                    maxlength="1000"
+                                    class="flex-1 w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 resize-none text-sm mb-2 disabled:opacity-50"
+                                    placeholder="e.g., 'Bring valid government-issued ID and original birth certificate for verification...'"
                                 ></textarea>
+                                <p v-if="form.errors.admin_remarks" class="text-red-400 text-xs mb-2">
+                                    {{ form.errors.admin_remarks }}
+                                </p>
                                 
                                 <button 
                                     type="submit" 
-                                    :disabled="form.processing"
-                                    class="w-full py-3 rounded-xl font-bold text-sm text-white transition-all shadow-lg flex justify-center items-center gap-2 transform active:scale-95"
+                                    :disabled="form.processing || isSubmitting"
+                                    class="w-full py-3 rounded-xl font-bold text-sm text-white transition-all shadow-lg flex justify-center items-center gap-2 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                                     :class="{
                                         'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20': form.status !== 'rejected',
                                         'bg-red-600 hover:bg-red-500 shadow-red-500/20': form.status === 'rejected'
                                     }"
                                 >
-                                    <span v-if="form.processing">Syncing...</span>
-                                    <span v-else>Update Request Record</span>
+                                    <svg v-if="form.processing || isSubmitting" class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span v-if="form.processing || isSubmitting">Syncing Changes...</span>
+                                    <span v-else>
+                                        <span v-if="form.status === 'rejected'">⚠️</span>
+                                        <span v-else>✓</span>
+                                        Update Request Record
+                                    </span>
                                 </button>
                             </div>
 

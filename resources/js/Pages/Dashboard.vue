@@ -4,22 +4,13 @@ import DashboardMap from '@/Components/DashboardMap.vue';
 import IssueWizard from '@/Components/IssueWizard.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 const user = usePage().props.auth.user;
 const page = usePage();
 const showWizard = ref(false);
 const mounted = ref(false);
-const currentTime = ref(Date.now());
-const logoUrl = '/images/enotpili.png';
-
-// Simplified intro
-const showIntro = ref(true);
-const introPhase = ref('logo');
-
-// Subtle parallax
-const mouseX = ref(0);
-const mouseY = ref(0);
+const currentTime = ref(new Date());
 
 const isBusinessOwner = computed(() => {
     return user.role === 'business_owner' || user.has_business;
@@ -30,41 +21,28 @@ const showFlash = ref(false);
 
 const time = ref('');
 const date = ref('');
-const fullDate = ref('');
 const greeting = ref('Good Morning');
 const dayPeriod = ref('AM');
 
-// Minimalist sound
-const audioContext = ref(null);
-const playSound = (frequency, duration) => {
-    try {
-        if (!audioContext.value) {
-            audioContext.value = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        const ctx = audioContext.value;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        
-        osc.frequency.value = frequency;
-        osc.type = 'sine';
-        
-        gain.gain.setValueAtTime(0.03, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-        
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + duration);
-    } catch (e) {
-        // Silent fail
-    }
-};
+// Notification count (you can make this dynamic)
+const notificationCount = ref();
 
+// Particle effect state
+const particles = ref([]);
+
+// Time-based theme color
+const themeColor = computed(() => {
+    const hour = currentTime.value.getHours();
+    if (hour >= 5 && hour < 12) return { from: '#3b82f6', to: '#60a5fa' }; // Morning blue
+    if (hour >= 12 && hour < 17) return { from: '#f59e0b', to: '#fbbf24' }; // Afternoon amber
+    if (hour >= 17 && hour < 21) return { from: '#8b5cf6', to: '#a78bfa' }; // Evening purple
+    return { from: '#6366f1', to: '#818cf8' }; // Night indigo
+});
+
+// Simplified update with animations
 const updateTime = () => {
     const now = new Date();
-    currentTime.value = now.getTime();
-    
+    currentTime.value = now;
     const hours = now.getHours();
     const minutes = now.getMinutes();
     const isPM = hours >= 12;
@@ -73,113 +51,91 @@ const updateTime = () => {
     const displayHours = hours % 12 || 12;
     
     time.value = `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    date.value = now.toLocaleDateString('en-US', { weekday: 'long' });
-    fullDate.value = now.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+    date.value = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
     
     if (hours < 12) greeting.value = 'Good Morning';
     else if (hours < 18) greeting.value = 'Good Afternoon';
     else greeting.value = 'Good Evening';
 };
 
-const quickStats = [
-    { icon: '📄', label: 'Active', value: '3', trend: '+2', color: 'from-blue-500 via-blue-600 to-indigo-600' },
-    { icon: '✅', label: 'Done', value: '12', trend: '+5', color: 'from-green-500 via-emerald-600 to-teal-600' },
-    { icon: '📊', label: 'Total', value: '15', trend: '+7', color: 'from-purple-500 via-violet-600 to-fuchsia-600' }
-];
+// Stats with dynamic loading
+const quickStats = ref([
+    { icon: '📄', label: 'Active', value: '...', color: 'from-blue-500 to-blue-600', loaded: false },
+    { icon: '✅', label: 'Done', value: '...', color: 'from-green-500 to-green-600', loaded: false },
+    { icon: '📊', label: 'Total', value: '...', color: 'from-purple-500 to-purple-600', loaded: false }
+]);
 
+// Simulate loading stats
+const loadStats = async () => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    quickStats.value[0].value = '12';
+    quickStats.value[0].loaded = true;
+    
+    await new Promise(resolve => setTimeout(resolve, 200));
+    quickStats.value[1].value = '48';
+    quickStats.value[1].loaded = true;
+    
+    await new Promise(resolve => setTimeout(resolve, 200));
+    quickStats.value[2].value = '60';
+    quickStats.value[2].loaded = true;
+};
+
+// Core mobile apps
 const mobileApps = [
-    { icon: '⚡', name: 'Services', link: route('services.landing'), gradient: 'from-blue-500 to-indigo-600' },
-    { icon: '💳', name: 'Bills', link: route('bills.create'), gradient: 'from-green-500 to-emerald-600' },
-    { icon: '🩺', name: 'Health', link: route('health.index'), gradient: 'from-red-500 to-rose-600' },
-    { icon: '📍', name: 'Places', link: route('establishments.index'), gradient: 'from-purple-500 to-fuchsia-600' },
-    { icon: '🏪', name: 'Market', link: route('marketplace.index'), gradient: 'from-orange-500 to-amber-600' },
-    { icon: '📊', name: isBusinessOwner.value ? 'Business' : 'Start', link: isBusinessOwner.value ? route('business.dashboard') : route('business.register'), gradient: 'from-indigo-500 to-cyan-600' },
-    { icon: '💼', name: 'Jobs', link: route('jobs.index'), gradient: 'from-yellow-500 to-orange-600' },
-    { icon: '📈', name: 'Prices', link: route('market.index'), gradient: 'from-cyan-500 to-teal-600' },
-    { icon: '♻️', name: 'Green', link: route('environment.index'), gradient: 'from-emerald-500 to-green-600' },
-    { icon: '🤝', name: 'Social', link: route('social.index'), gradient: 'from-violet-500 to-purple-600' },
-    { icon: '🚨', name: 'Report', link: null, action: 'wizard', gradient: 'from-red-600 to-pink-700', pulse: true },
-    { icon: '🗳️', name: 'Polls', link: route('polls.index'), gradient: 'from-amber-500 to-orange-600' },
+    { icon: '⚡', name: 'Services', link: route('services.landing'), gradient: 'from-blue-500 to-indigo-600', description: 'Quick access' },
+    { icon: '💳', name: 'Bills', link: route('bills.create'), gradient: 'from-green-500 to-emerald-600', description: 'Pay bills' },
+    { icon: '🩺', name: 'Health', link: route('health.index'), gradient: 'from-red-500 to-rose-600', description: 'Medical care' },
+    { icon: '🏪', name: 'Market', link: route('marketplace.index'), gradient: 'from-purple-500 to-fuchsia-600', description: 'Shop local' },
+    { icon: '📊', name: isBusinessOwner.value ? 'Business' : 'Start', link: isBusinessOwner.value ? route('business.dashboard') : route('business.register'), gradient: 'from-orange-500 to-amber-600', description: 'Manage' },
+    { icon: '🚨', name: 'Report', link: null, action: 'wizard', gradient: 'from-red-600 to-pink-700', description: 'Get help' },
 ];
 
+// Core desktop features
 const desktopFeatures = [
-    { title: 'Smart Services', subtitle: 'Permits & Clearances', icon: '⚡', link: route('services.landing'), historyLink: route('services.index'), gradient: 'from-blue-500 to-indigo-600', size: 'large' },
-    { title: 'Bills & Fees', subtitle: 'Secure Payments', icon: '💳', link: route('bills.create'), gradient: 'from-teal-500 to-emerald-600', size: 'medium' },
-    { title: 'E-Health', subtitle: 'Telemed & Booking', icon: '🩺', link: route('health.index'), gradient: 'from-sky-500 to-cyan-600', size: 'medium' },
-    { title: 'Issue Report', subtitle: 'Quick Response', icon: '🚨', link: null, action: 'wizard', gradient: 'from-red-500 to-pink-600', size: 'medium', special: true },
-    { title: 'Green Guard', subtitle: 'Waste & Air', icon: '♻️', link: route('environment.index'), gradient: 'from-green-500 to-emerald-600', size: 'medium' },
-    { title: 'Social Aid', subtitle: 'Support Programs', icon: '🤝', link: route('social.index'), gradient: 'from-violet-500 to-purple-600', size: 'medium' },
-    { title: 'Marketplace', subtitle: 'Local Businesses', icon: '🌐', link: route('marketplace.index'), gradient: 'from-purple-500 to-fuchsia-600', size: 'large', featured: true },
-    { title: isBusinessOwner.value ? 'My Business' : 'Business Hub', subtitle: isBusinessOwner.value ? 'Dashboard' : 'Register Now', icon: isBusinessOwner.value ? '📊' : '🏪', link: isBusinessOwner.value ? route('business.dashboard') : route('business.register'), gradient: isBusinessOwner.value ? 'from-blue-500 to-indigo-600' : 'from-orange-500 to-amber-600', size: 'medium' },
-    { title: 'Market Prices', subtitle: 'Live Rates', icon: '📈', link: route('market.index'), gradient: 'from-cyan-500 to-blue-600', size: 'medium' },
-    { title: 'Places', subtitle: 'Directory', icon: '🏨', link: route('establishments.index'), gradient: 'from-lime-500 to-green-600', size: 'medium' },
-    { title: 'Local Jobs', subtitle: 'Opportunities', icon: '💼', link: route('jobs.index'), gradient: 'from-yellow-500 to-orange-600', size: 'medium' },
+    { title: 'Smart Services', subtitle: 'Permits & Clearances', icon: '⚡', link: route('services.landing'), historyLink: route('services.index'), gradient: 'from-blue-500 to-indigo-600', size: 'large', description: 'Fast digital processing' },
+    { title: 'Bills & Fees', subtitle: 'Secure Payments', icon: '💳', link: route('bills.create'), gradient: 'from-teal-500 to-emerald-600', size: 'medium', description: 'Pay online instantly' },
+    { title: 'E-Health', subtitle: 'Telemed & Booking', icon: '🩺', link: route('health.index'), gradient: 'from-sky-500 to-cyan-600', size: 'medium', description: 'Healthcare at home' },
+    { title: 'Issue Report', subtitle: 'Quick Response', icon: '🚨', link: null, action: 'wizard', gradient: 'from-red-500 to-pink-600', size: 'medium', description: 'Report problems' },
+    { title: 'Marketplace', subtitle: 'Local Businesses', icon: '🌐', link: route('marketplace.index'), gradient: 'from-purple-500 to-fuchsia-600', size: 'large', description: 'Support local economy' },
+    { title: isBusinessOwner.value ? 'My Business' : 'Business Hub', subtitle: isBusinessOwner.value ? 'Dashboard' : 'Register Now', icon: isBusinessOwner.value ? '📊' : '🏪', link: isBusinessOwner.value ? route('business.dashboard') : route('business.register'), gradient: isBusinessOwner.value ? 'from-blue-500 to-indigo-600' : 'from-orange-500 to-amber-600', size: 'medium', description: isBusinessOwner.value ? 'Manage business' : 'Start your journey' },
 ];
+
+// Generate particles
+const generateParticles = () => {
+    particles.value = Array.from({ length: 20 }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        size: Math.random() * 4 + 2,
+        duration: Math.random() * 10 + 10,
+        delay: Math.random() * 5,
+    }));
+};
 
 let clockTimer;
-let introTimer;
-
-const handleSkipIntro = () => {
-    playSound(600, 0.1);
-    if (introTimer) clearTimeout(introTimer);
-    showIntro.value = false;
-    nextTick(() => triggerEntranceAnimation());
-};
-
-const startIntroSequence = () => {
-    playSound(440, 0.15);
-    
-    introTimer = setTimeout(() => {
-        showIntro.value = false;
-        nextTick(() => triggerEntranceAnimation());
-    }, 2000);
-};
-
-const triggerEntranceAnimation = () => { 
-    mounted.value = true;
-    playSound(880, 0.15);
-};
-
-const handleMouseMove = (e) => {
-    requestAnimationFrame(() => {
-        const x = (e.clientX / window.innerWidth - 0.5) * 15;
-        const y = (e.clientY / window.innerHeight - 0.5) * 15;
-        mouseX.value = x;
-        mouseY.value = y;
-    });
-};
 
 onMounted(() => {
     updateTime();
     clockTimer = setInterval(updateTime, 1000);
+    generateParticles();
     
     if (flashSuccess.value) { 
         showFlash.value = true;
         setTimeout(() => showFlash.value = false, 4000);
     }
     
-    const hasSeenIntro = sessionStorage.getItem('epili-intro-seen');
-    if (!hasSeenIntro) {
-        startIntroSequence();
-        sessionStorage.setItem('epili-intro-seen', 'true');
-    } else {
-        showIntro.value = false;
-        requestAnimationFrame(() => {
-            setTimeout(triggerEntranceAnimation, 50);
-        });
-    }
+    // Staggered entrance animations
+    setTimeout(() => mounted.value = true, 100);
     
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    // Load stats with animation
+    loadStats();
 });
 
 onUnmounted(() => { 
     clearInterval(clockTimer);
-    if (introTimer) clearTimeout(introTimer);
-    window.removeEventListener('mousemove', handleMouseMove);
 });
 
 const handleAppClick = (app) => {
-    if ('vibrate' in navigator) navigator.vibrate(5);
     if (app.action === 'wizard') showWizard.value = true;
 };
 </script>
@@ -188,44 +144,38 @@ const handleAppClick = (app) => {
     <Head title="Dashboard" />
     <AuthenticatedLayout>
         
-        <!-- Elegant Intro -->
-        <Transition name="intro-fade">
-            <div v-if="showIntro" class="intro-overlay">
-                <div class="intro-bg">
-                    <div class="intro-gradient"></div>
-                    <div class="intro-glow"></div>
-                </div>
+        <!-- Floating Particles Background -->
+        <div class="particles-container">
+            <div 
+                v-for="particle in particles" 
+                :key="particle.id" 
+                class="particle"
+                :style="{
+                    left: particle.x + '%',
+                    top: particle.y + '%',
+                    width: particle.size + 'px',
+                    height: particle.size + 'px',
+                    animationDuration: particle.duration + 's',
+                    animationDelay: particle.delay + 's',
+                }"
+            ></div>
+        </div>
 
-                <button @click="handleSkipIntro" class="skip-btn">
-                    <span>Skip</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
-                    </svg>
-                </button>
-
-                <div class="intro-content">
-                    <div class="intro-logo">
-                        <div class="logo-glow"></div>
-                        <div class="logo-icon">🏛️</div>
-                    </div>
-                    <h2 class="intro-title">E-PILI</h2>
-                    <p class="intro-subtitle">Digital Governance Platform</p>
-                </div>
-            </div>
-        </Transition>
-
-        <!-- Success Toast -->
+        <!-- Enhanced Toast -->
         <Transition name="toast">
             <div v-if="showFlash && flashSuccess" class="toast">
-                <div class="toast-icon">
-                    <svg fill="currentColor" viewBox="0 0 20 20">
+                <div class="toast-icon-wrap">
+                    <svg class="toast-icon" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
                 </div>
-                <p class="toast-text">{{ flashSuccess }}</p>
+                <div class="toast-content">
+                    <p class="toast-title">Success!</p>
+                    <p class="toast-text">{{ flashSuccess }}</p>
+                </div>
                 <button @click="showFlash = false" class="toast-close">
-                    <svg fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
@@ -233,235 +183,174 @@ const handleAppClick = (app) => {
 
         <!-- MOBILE LAYOUT -->
         <div class="mobile-layout">
-            <!-- Logo Section -->
-            <div class="logo-section" :class="{ 'fade-in': mounted }">
+            <!-- Enhanced Logo Header -->
+            <div class="logo-header" :class="{ 'show': mounted }">
                 <div class="logo-container">
-                    <div class="logo-glow-ring"></div>
-                    <img :src="logoUrl" alt="E-Pili Logo" class="logo-image" />
-                </div>
-            </div>
-
-            <!-- Developer Carousel -->
-            <div class="developer-carousel" :class="{ 'slide-down': mounted }" style="animation-delay: 80ms">
-                <div class="carousel-glass">
-                    <div class="carousel-gradient"></div>
-                    <div class="carousel-content">
-                        <div class="dev-avatar">
-                            <div class="avatar-glow"></div>
-                            <div class="avatar-ring"></div>
-                            <div class="avatar-inner">
-                                <span class="avatar-icon">👨‍💻</span>
-                            </div>
-                        </div>
-                        <div class="dev-info">
-                            <p class="dev-label">Developed by</p>
-                            <h3 class="dev-name">Justine Philip Villarosa</h3>
-                            <p class="dev-title">Bachelor of Science in Information Technology</p>
-                            <div class="dev-badges">
-                                <span class="dev-badge">
-                                    <span>🎓</span>
-                                    <span>BSIT</span>
-                                </span>
-                                <span class="dev-badge">
-                                    <span>⚡</span>
-                                    <span>Developer</span>
-                                </span>
-                            </div>
-                        </div>
+                    <div class="logo-icon" :style="{ background: `linear-gradient(135deg, ${themeColor.from}, ${themeColor.to})` }">
+                        <span class="logo-emoji">🏛️</span>
+                        <div class="logo-glow"></div>
                     </div>
-                    <div class="carousel-decoration">
-                        <div class="decoration-dot dot-1"></div>
-                        <div class="decoration-dot dot-2"></div>
-                        <div class="decoration-dot dot-3"></div>
+                    <div class="logo-text">
+                        <h1 class="logo-title">CityConnect</h1>
+                        <p class="logo-subtitle">Smart City Portal</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Time Widget -->
-            <div class="time-widget" :class="{ 'fade-in': mounted }" style="animation-delay: 160ms">
-                <div class="widget-glass">
-                    <div class="widget-gradient"></div>
-                    <div class="time-content">
-                        <div class="time-left">
-                            <p class="time-label">{{ date }}</p>
-                            <div class="time-display">
-                                <h2 class="time-value">{{ time }}</h2>
-                                <span class="time-period">{{ dayPeriod }}</span>
-                            </div>
-                        </div>
-                        <div class="date-badge">
-                            <p class="date-day">{{ new Date().getDate() }}</p>
-                            <p class="date-month">{{ fullDate.split(' ')[1] }}</p>
-                        </div>
+            <!-- Enhanced Time Widget -->
+            <div class="time-widget" :class="{ 'show': mounted }">
+                <div class="time-bg-orb" :style="{ background: `radial-gradient(circle, ${themeColor.from}40, transparent)` }"></div>
+                <div class="time-content">
+                    <div class="time-info">
+                        <p class="time-label">{{ date }}</p>
+                        <div class="time-display">
+                            <h2 class="time-value">{{ time }}</h2>
+                            <span class="time-period">{{ dayPeriod }}</span>
+                        </div>  
                     </div>
+                    
+                    <!-- Enhanced Notification Button -->
+                    <Link :href="route('notifications.index')" class="notification-button">
+                        <div class="notification-icon-wraps" :style="{ background: `linear-gradient(135deg, ${themeColor.from}40, ${themeColor.to}40)` }">
+                            <h1 class="size">📬</h1>
+                            <span v-if="notificationCount > 0" class="notification-badge">
+                                {{ notificationCount }}
+                            </span>
+                        </div>
+                    </Link>
                 </div>
             </div>
 
-            <!-- Stats Grid -->
+            <!-- Enhanced Stats Grid -->
             <div class="stats-grid">
                 <div v-for="(stat, i) in quickStats" :key="stat.label"
-                    class="stat-card" :class="{ 'scale-in': mounted }"
-                    :style="`animation-delay: ${240 + i * 60}ms`">
-                    <div :class="`stat-glow bg-gradient-to-br ${stat.color}`"></div>
+                    class="stat-card" :class="{ 'show': mounted, 'loaded': stat.loaded }"
+                    :style="`animation-delay: ${i * 100}ms`">
+                    <div class="stat-background"></div>
                     <div :class="`stat-icon-bg bg-gradient-to-br ${stat.color}`">
                         <span class="stat-icon">{{ stat.icon }}</span>
+                        <div class="stat-icon-glow"></div>
                     </div>
                     <div class="stat-info">
                         <p class="stat-value">{{ stat.value }}</p>
                         <p class="stat-label">{{ stat.label }}</p>
                     </div>
-                    <div :class="['stat-trend', stat.trend.startsWith('+') ? 'trend-up' : 'trend-down']">
-                        {{ stat.trend }}
-                    </div>
+                    <div class="stat-shimmer"></div>
                 </div>
             </div>
 
-            <!-- Search Bar -->
-            <div class="search-wrapper" :class="{ 'slide-up': mounted }" style="animation-delay: 420ms">
+            <!-- Enhanced Search Bar -->
+            <div class="search-wrapper" :class="{ 'show': mounted }">
                 <div class="search-glass">
-                    <div class="search-icon-wrap">
-                        <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                    </div>
-                    <input type="text" placeholder="Search services..." class="search-input">
-                    <button class="search-voice">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                        </svg>
+                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" placeholder="Search services, bills, documents..." class="search-input">
+                    <button class="search-button" :style="{ background: `linear-gradient(135deg, ${themeColor.from}, ${themeColor.to})` }">
+                        <span>⚡</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Apps Section -->
+            <!-- Enhanced Apps Section -->
             <div class="apps-section">
-                <div class="apps-header" :class="{ 'slide-right': mounted }" style="animation-delay: 500ms">
-                    <h3 class="apps-title">Quick Access</h3>
+                <div class="apps-header" :class="{ 'show': mounted }">
+                    <div>
+                        <h3 class="apps-title">Quick Access</h3>
+                        <p class="apps-subtitle">Your most used services</p>
+                    </div>
                 </div>
                 <div class="apps-grid">
                     <component :is="app.link ? Link : 'button'"
                         v-for="(app, i) in mobileApps" :key="app.name"
                         :href="app.link" @click="app.action ? handleAppClick(app) : null"
-                        class="app-card" :class="{ 'scale-fade': mounted }"
-                        :style="`animation-delay: ${580 + (i * 40)}ms`">
-                        <div v-if="app.pulse" class="app-pulse"></div>
-                        <div :class="`app-glow bg-gradient-to-br ${app.gradient}`"></div>
+                        class="app-card" :class="{ 'show': mounted }"
+                        :style="`animation-delay: ${i * 60}ms`">
                         <div :class="`app-icon-wrap bg-gradient-to-br ${app.gradient}`">
                             <span class="app-icon">{{ app.icon }}</span>
+                            <div class="app-glow"></div>
                         </div>
-                        <span class="app-name">{{ app.name }}</span>
+                        <div class="app-info">
+                            <span class="app-name">{{ app.name }}</span>
+                            <span class="app-description">{{ app.description }}</span>
+                        </div>
+                        <div class="app-shimmer"></div>
                     </component>
                 </div>
             </div>
 
-            <!-- Featured -->
-            <div class="featured-section">
-                <div class="featured-header" :class="{ 'slide-right': mounted }" style="animation-delay: 1060ms">
-                    <h3 class="featured-title">Featured</h3>
-                    <div class="status-dots">
-                        <div class="dot dot-1"></div>
-                        <div class="dot dot-2"></div>
-                        <div class="dot dot-3"></div>
-                    </div>
-                </div>
-                <div class="featured-grid">
-                    <Link :href="route('bills.create')" class="featured-card" :class="{ 'scale-in': mounted }" style="animation-delay: 1140ms">
-                        <div class="featured-glow glow-green"></div>
-                        <div class="featured-icon icon-green">
-                            <span>💳</span>
-                        </div>
-                        <div class="featured-content">
-                            <p class="featured-title-text">Pay Bills</p>
-                            <p class="featured-desc">Quick payments</p>
-                        </div>
-                        <div class="featured-arrow">→</div>
-                    </Link>
-                    <button @click="showWizard = true" class="featured-card" :class="{ 'scale-in': mounted }" style="animation-delay: 1220ms">
-                        <div class="featured-glow glow-red"></div>
-                        <div class="pulse-indicator">
-                            <div class="pulse-dot"></div>
-                            <div class="pulse-ring"></div>
-                        </div>
-                        <div class="featured-icon icon-red">
-                            <span>🚨</span>
-                        </div>
-                        <div class="featured-content">
-                            <p class="featured-title-text">Report</p>
-                            <p class="featured-desc">Emergency</p>
-                        </div>
-                        <div class="featured-arrow">→</div>
-                    </button>
-                </div>
-                <div class="map-card" :class="{ 'scale-in': mounted }" style="animation-delay: 1300ms">
-                    <div class="map-badge">
-                        <span class="badge-pulse">
-                            <span class="badge-ping"></span>
-                            <span class="badge-dot"></span>
-                        </span>
+            <!-- Enhanced Map Card -->
+            <div class="map-card" :class="{ 'show': mounted }">
+                <div class="map-header">
+                    <div class="map-badge" :style="{ background: `linear-gradient(135deg, ${themeColor.from}60, ${themeColor.to}60)` }">
+                        <span class="badge-dot"></span>
                         <span class="badge-text">Live Map</span>
                     </div>
-                    <div class="map-wrap">
-                        <DashboardMap />
-                    </div>
-                    <div class="map-overlay"></div>
-                    <div class="map-info">
-                        <div class="map-info-content">
-                            <div>
-                                <p class="map-title">Barangay Overview</p>
-                                <p class="map-subtitle">View locations & alerts</p>
-                            </div>
-                            <div class="map-arrow">→</div>
-                        </div>
-                    </div>
+                    <Link :href="route('establishments.index')" class="map-expand">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                        </svg>
+                    </Link>
+                </div>
+                <div class="map-wrap">
+                    <DashboardMap />
                 </div>
             </div>
 
-            <!-- Emergency Button -->
+            <!-- Enhanced Emergency Button -->
             <Link :href="route('emergency.index')" class="emergency-fab">
-                <div class="fab-rings">
-                    <div class="fab-ring ring-1"></div>
-                    <div class="fab-ring ring-2"></div>
-                    <div class="fab-ring ring-3"></div>
-                </div>
-                <div class="fab-glow"></div>
                 <div class="fab-button">
                     <span class="fab-icon">🚨</span>
+                    <div class="fab-ring"></div>
+                    <div class="fab-glow"></div>
                 </div>
-                <div class="fab-label">
-                    <span>Emergency</span>
-                </div>
+                <span class="fab-label">Emergency</span>
             </Link>
         </div>
 
         <!-- DESKTOP LAYOUT -->
         <div class="desktop-layout">
-            <header class="desktop-header" :class="{ 'fade-in': mounted }">
+            <!-- Desktop Logo Header -->
+            <div class="desktop-logo-header" :class="{ 'show': mounted }">
+                <div class="desktop-logo-container">
+                    <div class="desktop-logo-icon" :style="{ background: `linear-gradient(135deg, ${themeColor.from}, ${themeColor.to})` }">
+                        🏛️
+                        <div class="desktop-logo-glow"></div>
+                    </div>
+                    <div class="desktop-logo-text">
+                        <h1 class="desktop-logo-title">CityConnect</h1>
+                        <p class="desktop-logo-subtitle">Smart City Management Portal</p>
+                    </div>
+                </div>
+                <Link :href="route('emergency.index')" class="emergency-button-desktop">
+                    <span class="emergency-icon">🚨</span>
+                    <span class="emergency-text">Emergency</span>
+                    <div class="emergency-pulse"></div>
+                </Link>
+            </div>
+            
+            <!-- Enhanced Desktop Header -->
+            <header class="desktop-header" :class="{ 'show': mounted }">
                 <div class="header-content">
                     <div class="greeting-wrap">
-                        <div class="status-badge">
-                            <span class="status-pulse">
-                                <span class="status-ping"></span>
-                                <span class="status-dot"></span>
-                            </span>
-                            <p>System Operational</p>
-                        </div>
                         <h1 class="greeting-text">
-                            {{ greeting }}, 
-                            <span class="greeting-name">{{ user.name.split(' ')[0] }}</span>
+                            {{ greeting }}, {{ user.name }}!
                         </h1>
+                        <p class="greeting-subtitle">{{ date }}</p>
                     </div>
                     <div class="clock-display">
                         <div class="clock-time">
-                            {{ time }}
+                            <span class="clock-digits">{{ time }}</span>
                             <span class="clock-period">{{ dayPeriod }}</span>
                         </div>
-                        <div class="clock-date">{{ date }}</div>
+                        <div class="clock-decoration" :style="{ background: `linear-gradient(135deg, ${themeColor.from}40, ${themeColor.to}40)` }"></div>
                     </div>
                 </div>
             </header>
 
             <div class="desktop-grid">
                 <div class="desktop-main">
+                    <!-- Enhanced Features Grid -->
                     <div class="features-grid">
                         <component :is="feature.link ? Link : 'button'"
                             v-for="(feature, i) in desktopFeatures" :key="feature.title"
@@ -469,110 +358,74 @@ const handleAppClick = (app) => {
                             :class="['feature-card', `bg-gradient-to-br ${feature.gradient}`,
                                 { 'feature-large': feature.size === 'large',
                                   'feature-medium': feature.size === 'medium',
-                                  'scale-fade': mounted }]"
-                            :style="`animation-delay: ${i * 70}ms`">
-                            <div v-if="feature.featured" class="feature-badge">✨ Popular</div>
+                                  'show': mounted }]"
+                            :style="`animation-delay: ${i * 80}ms`">
+                            <div class="feature-overlay"></div>
                             <Link v-if="feature.historyLink" :href="feature.historyLink" @click.stop class="feature-history">
-                                <span>History</span>
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
+                                <span>History</span>
                             </Link>
                             <div class="feature-content">
-                                <div class="feature-icon-wrap">
-                                    <span class="feature-icon">{{ feature.icon }}</span>
+                                <div class="feature-header">
+                                    <div class="feature-icon-wrap">
+                                        <span class="feature-icon">{{ feature.icon }}</span>
+                                        <div class="feature-icon-glow"></div>
+                                    </div>
+                                    <div class="feature-text">
+                                        <p class="feature-subtitle">{{ feature.subtitle }}</p>
+                                        <h3 class="feature-title">{{ feature.title }}</h3>
+                                    </div>
                                 </div>
-                                <div class="feature-text">
-                                    <p class="feature-subtitle">{{ feature.subtitle }}</p>
-                                    <h3 class="feature-title">{{ feature.title }}</h3>
-                                </div>
+                                <p class="feature-description">{{ feature.description }}</p>
                             </div>
+                            <div class="feature-shine"></div>
                         </component>
                     </div>
                 </div>
 
                 <aside class="desktop-sidebar">
-                    <!-- Developer Card -->
-                    <div class="developer-card" :class="{ 'scale-in': mounted }">
-                        <div class="dev-card-content">
-                            <div class="dev-card-gradient"></div>
-                            <div class="dev-card-header">
-                                <div class="dev-card-avatar">
-                                    <div class="dev-avatar-glow"></div>
-                                    <div class="dev-avatar-ring"></div>
-                                    <span class="dev-avatar-icon">👨‍💻</span>
-                                </div>
-                                <div class="dev-card-badge">Developer</div>
+                    <!-- Stats Card -->
+                    <div class="sidebar-card stats-card" :class="{ 'show': mounted }">
+                        <div class="card-header">
+                            <h3 class="card-title">Quick Stats</h3>
+                            <div class="card-icon" :style="{ background: `linear-gradient(135deg, ${themeColor.from}, ${themeColor.to})` }">
+                                📊
                             </div>
-                            <div class="dev-card-body">
-                                <p class="dev-card-label">Created & Developed by</p>
-                                <h3 class="dev-card-name">Justine Philip Villarosa</h3>
-                                <p class="dev-card-degree">Bachelor of Science in Information Technology</p>
-                                <div class="dev-card-tags">
-                                    <span class="dev-tag">🎓 BSIT</span>
-                                    <span class="dev-tag">⚡ Full Stack</span>
+                        </div>
+                        <div class="stats-list">
+                            <div v-for="stat in quickStats" :key="stat.label" class="stat-item" :class="{ 'loaded': stat.loaded }">
+                                <div :class="`stat-item-icon bg-gradient-to-br ${stat.color}`">
+                                    {{ stat.icon }}
+                                    <div class="stat-item-glow"></div>
                                 </div>
+                                <div class="stat-item-info">
+                                    <p class="stat-item-value">{{ stat.value }}</p>
+                                    <p class="stat-item-label">{{ stat.label }}</p>
+                                </div>
+                                <div class="stat-item-trend">↗</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="id-card" :class="{ 'scale-in': mounted }" style="animation-delay: 100ms">
-                        <div class="id-card-content">
-                            <div class="id-card-header">
-                                <div class="id-logo">🏛️</div>
-                                <div class="id-number">
-                                    <div class="id-label">Universal ID</div>
-                                    <div class="id-value">{{ user.id.toString().padStart(8, '0') }}</div>
-                                </div>
+                    <!-- Enhanced Map Card -->
+                    <div class="sidebar-map" :class="{ 'show': mounted }" style="animation-delay: 150ms">
+                        <div class="map-header">
+                            <div class="map-badge-desk" :style="{ background: `linear-gradient(135deg, ${themeColor.from}60, ${themeColor.to}60)` }">
+                                <span class="badge-dot"></span>
+                                📍 Live Map
                             </div>
-                            <div class="id-card-footer">
-                                <div class="id-name">{{ user.name }}</div>
-                                <div class="id-badges">
-                                    <span class="id-badge badge-primary">
-                                        {{ isBusinessOwner ? 'Business Owner' : 'Citizen' }}
-                                    </span>
-                                    <span class="id-badge badge-success">Active</span>
-                                </div>
-                            </div>
+                            <Link :href="route('establishments.index')" class="map-expand-desk">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                                </svg>
+                            </Link>
                         </div>
-                    </div>
-
-                    <Link :href="route('polls.index')" class="sidebar-card card-polls"
-                          :class="{ 'scale-in': mounted }" style="animation-delay: 300ms">
-                        <div class="card-content">
-                            <div class="card-header">
-                                <div class="card-icon">🗳️</div>
-                                <span class="card-badge">Live</span>
-                            </div>
-                            <div class="card-footer">
-                                <h3 class="card-title">Freedom Poll</h3>
-                                <p class="card-subtitle">Share Your Voice</p>
-                            </div>
-                        </div>
-                    </Link>
-
-                    <div class="sidebar-map" :class="{ 'scale-in': mounted }" style="animation-delay: 400ms">
-                        <div class="map-badge-desk">📍 Live Map & Alerts</div>
                         <div class="map-wrapper">
                             <DashboardMap />
                         </div>
                     </div>
-                    
-                    <Link :href="route('emergency.index')" class="sidebar-card card-emergency"
-                          :class="{ 'scale-in': mounted }" style="animation-delay: 500ms">
-                        <div class="card-content">
-                            <div class="emergency-pulse-1"></div>
-                            <div class="emergency-pulse-2"></div>
-                            <div class="card-header">
-                                <div class="card-icon">📞</div>
-                                <span class="card-badge badge-emergency">SOS</span>
-                            </div>
-                            <div class="card-footer">
-                                <h3 class="card-title">Emergency Call</h3>
-                                <p class="card-subtitle">Tap for Command Center</p>
-                            </div>
-                        </div>
-                    </Link>
                 </aside>
             </div>
         </div>
@@ -583,1363 +436,1435 @@ const handleAppClick = (app) => {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 * { 
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
-    -webkit-font-smoothing: antialiased; 
-    letter-spacing: -0.01em; 
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-/* GPU Acceleration */
-.intro-overlay,
-.widget-glass,
-.stat-card,
-.app-card,
-.feature-card {
-    transform: translate3d(0, 0, 0);
-    will-change: transform;
+/* Floating Particles */
+.particles-container {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
 }
 
-/* ========== ELEGANT INTRO ========== */
-.intro-overlay {
-    @apply fixed inset-0 z-[9999] flex items-center justify-center;
-    background: radial-gradient(ellipse at center, #0a0a0f 0%, #000 100%);
+.particle {
+    position: absolute;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.8), transparent);
+    border-radius: 50%;
+    animation: float-particle ease-in-out infinite;
 }
 
-.intro-bg {
-    @apply absolute inset-0;
+@keyframes float-particle {
+    0%, 100% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100vh) translateX(50px);
+        opacity: 0;
+    }
 }
 
-.intro-gradient {
-    @apply absolute inset-0 opacity-30;
-    background: radial-gradient(circle at 30% 50%, rgba(59, 130, 246, 0.15), transparent 70%);
-}
-
-.intro-glow {
-    @apply absolute inset-0 opacity-20;
-    background: radial-gradient(circle at 70% 50%, rgba(168, 85, 247, 0.12), transparent 70%);
-    animation: glow-pulse 4s ease-in-out infinite;
-}
-
-@keyframes glow-pulse {
-    0%, 100% { opacity: 0.15; transform: scale(1); }
-    50% { opacity: 0.25; transform: scale(1.05); }
-}
-
-.skip-btn {
-    @apply absolute top-8 right-8 z-50 px-5 py-2.5 
-           bg-white/5 backdrop-blur-xl border border-white/10 
-           rounded-full text-white text-sm font-semibold 
-           hover:bg-white/10 transition-all duration-300 
-           flex items-center gap-2 hover:scale-105 active:scale-95;
-}
-
-.intro-content {
-    @apply text-center z-10;
-    animation: intro-enter 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes intro-enter {
-    from { opacity: 0; transform: scale(0.9) translateY(20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.intro-logo {
-    @apply relative inline-block mb-6;
-}
-
-.logo-glow {
-    @apply absolute inset-0 bg-blue-500/20 blur-3xl rounded-full;
-    animation: logo-pulse 2s ease-in-out infinite;
-}
-
-@keyframes logo-pulse {
-    0%, 100% { opacity: 0.2; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(1.1); }
-}
-
-.logo-icon {
-    @apply relative text-7xl;
-    filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.6));
-    animation: logo-float 3s ease-in-out infinite;
-}
-
-@keyframes logo-float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); }
-}
-
-.intro-title {
-    @apply text-5xl font-black text-white mb-3 tracking-wider;
-    text-shadow: 0 0 40px rgba(59, 130, 246, 0.4);
-}
-
-.intro-subtitle {
-    @apply text-lg text-gray-400 font-light tracking-widest uppercase;
-}
-
-/* ========== TOAST ========== */
+/* Enhanced Toast */
 .toast {
-    @apply fixed top-20 right-4 z-[60] w-[90vw] sm:w-96 
-           rounded-2xl shadow-2xl flex items-center gap-3 p-4;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+    position: fixed;
+    top: 5.5rem;
+    right: 1rem;
+    z-index: 60;
+    width: calc(100vw - 2rem);
+    max-width: 24rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    background: rgba(16, 185, 129, 0.95);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+@media (min-width: 1024px) {
+    .toast {
+        top: 6rem;
+        right: 2rem;
+    }
+}
+
+.toast-icon-wrap {
+    width: 2.5rem;
+    height: 2.5rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .toast-icon {
-    @apply w-10 h-10 text-white flex-shrink-0;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: white;
+}
+
+.toast-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.toast-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.125rem;
 }
 
 .toast-text {
-    @apply text-sm font-semibold text-white flex-1;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .toast-close {
-    @apply w-5 h-5 text-white hover:scale-110 transition-transform;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+    transition: background 0.2s;
 }
 
-/* ========== MOBILE LAYOUT ========== */
+.toast-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.toast-close svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* Mobile Layout */
 .mobile-layout {
-    @apply lg:hidden w-full max-w-md mx-auto px-4 pb-8 pt-4;
+    display: block;
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: 0 1rem 8rem;
+}
+
+@media (min-width: 1024px) {
+    .mobile-layout {
+        display: none;
+    }
 }
 
 .desktop-layout {
-    @apply hidden lg:block w-full max-w-7xl mx-auto px-4 pb-20;
+    display: none;
 }
 
-/* Logo Section */
-.logo-section {
-    @apply mb-4 flex justify-center opacity-0;
+@media (min-width: 1024px) {
+    .desktop-layout {
+        display: block;
+        width: 100%;
+        max-width: 80rem;
+        margin: 0 auto;
+        padding: 0 1.5rem 4rem;
+    }
+}
+
+/* Enhanced Mobile Logo Header */
+.logo-header {
+    margin-bottom: 1rem;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo-header.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .logo-container {
-    @apply relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
 }
 
-.logo-glow-ring {
-    @apply absolute inset-0;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.3), transparent 70%);
-    filter: blur(20px);
-    animation: logo-pulse-mobile 3s ease-in-out infinite;
+.logo-icon {
+    position: relative;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
 }
 
-@keyframes logo-pulse-mobile {
-    0%, 100% { opacity: 0.4; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.1); }
+.logo-glow {
+    position: absolute;
+    inset: -4px;
+    border-radius: 1.25rem;
+    background: inherit;
+    filter: blur(12px);
+    opacity: 0.6;
+    z-index: -1;
 }
 
-.logo-image {
-    @apply relative w-24 h-24 object-contain;
-    filter: drop-shadow(0 10px 30px rgba(59, 130, 246, 0.5));
-    animation: logo-float-mobile 4s ease-in-out infinite;
+.logo-emoji {
+    font-size: 1.75rem;
+    position: relative;
+    z-index: 1;
 }
 
-@keyframes logo-float-mobile {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
+.logo-text {
+    text-align: center;
 }
 
-/* Developer Carousel */
-.developer-carousel {
-    @apply mb-5 opacity-0;
+.logo-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.025em;
 }
 
-.carousel-glass {
-    @apply relative overflow-hidden rounded-3xl p-5 border border-white/10;
-    background: linear-gradient(135deg, rgba(28, 28, 30, 0.95), rgba(44, 44, 46, 0.95));
-    backdrop-filter: blur(40px);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.logo-subtitle {
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-.carousel-glass:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9);
-    border-color: rgba(255, 255, 255, 0.15);
-}
-
-.carousel-gradient {
-    @apply absolute inset-0 opacity-40 z-0;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(147, 51, 234, 0.08));
-    animation: carousel-shift 8s ease-in-out infinite;
-}
-
-@keyframes carousel-shift {
-    0%, 100% { transform: translateX(0); }
-    50% { transform: translateX(20px); }
-}
-
-.carousel-content {
-    @apply relative flex items-center gap-4;
-}
-
-.carousel-content::before {
-    content: '';
-    @apply absolute inset-0 -translate-x-full;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-    animation: carousel-shine 8s ease-in-out infinite;
-}
-
-@keyframes carousel-shine {
-    0%, 90%, 100% { transform: translateX(-100%); }
-    45%, 55% { transform: translateX(100%); }
-}
-
-.dev-avatar {
-    @apply relative flex-shrink-0 z-10;
-}
-
-.avatar-glow {
-    @apply absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl blur-xl opacity-40;
-    animation: avatar-glow 3s ease-in-out infinite;
-}
-
-@keyframes avatar-glow {
-    0%, 100% { opacity: 0.3; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(1.1); }
-}
-
-.avatar-ring {
-    @apply absolute inset-0 rounded-2xl;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(147, 51, 234, 0.4), rgba(236, 72, 153, 0.4));
-    padding: 2px;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    animation: ring-rotate 4s linear infinite;
-}
-
-@keyframes ring-rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-.avatar-inner {
-    @apply relative w-16 h-16 rounded-2xl flex items-center justify-center;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
-    backdrop-filter: blur(20px);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.avatar-icon {
-    @apply text-3xl;
-    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
-}
-
-.dev-info {
-    @apply flex-1 min-w-0 relative z-10;
-}
-
-.dev-label {
-    @apply text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1;
-}
-
-.dev-name {
-    @apply text-base font-black text-white mb-0.5 leading-tight;
-    background: linear-gradient(135deg, #fff, #e0e0e0);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: name-shimmer 3s ease-in-out infinite;
-}
-
-@keyframes name-shimmer {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.85; }
-}
-
-.dev-title {
-    @apply text-xs text-gray-400 leading-tight mb-2;
-}
-
-.dev-badges {
-    @apply flex items-center gap-2 flex-wrap;
-}
-
-.dev-badge {
-    @apply inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold border;
-    background: rgba(59, 130, 246, 0.15);
-    border-color: rgba(59, 130, 246, 0.3);
-    color: rgb(147, 197, 253);
-    animation: badge-glow 2s ease-in-out infinite;
-}
-
-@keyframes badge-glow {
-    0%, 100% { box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
-    50% { box-shadow: 0 0 12px rgba(59, 130, 246, 0.4); }
-}
-
-.carousel-decoration {
-    @apply absolute top-3 right-3 z-20;
-}
-
-.decoration-dot {
-    @apply absolute w-1.5 h-1.5 rounded-full;
-    animation: dot-blink 2s ease-in-out infinite;
-}
-
-.dot-1 {
-    @apply bg-blue-400 top-0 right-0;
-    box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
-}
-
-.dot-2 {
-    @apply bg-purple-400 top-3 right-0;
-    box-shadow: 0 0 8px rgba(192, 132, 252, 0.5);
-    animation-delay: 0.3s;
-}
-
-.dot-3 {
-    @apply bg-pink-400 top-6 right-0;
-    box-shadow: 0 0 8px rgba(244, 114, 182, 0.5);
-    animation-delay: 0.6s;
-}
-
-@keyframes dot-blink {
-    0%, 100% { opacity: 0.4; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.3); }
-}
-
-/* Time Widget */
+/* Enhanced Time Widget */
 .time-widget {
-    @apply mb-6 opacity-0;
+    position: relative;
+    margin-bottom: 1.25rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-delay: 0.1s;
 }
 
-.widget-glass {
-    @apply relative overflow-hidden rounded-3xl p-5 border border-white/10;
-    background: linear-gradient(135deg, rgba(28, 28, 30, 0.95), rgba(44, 44, 46, 0.95));
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(40px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.time-widget.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
-.widget-glass:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9);
+.time-bg-orb {
+    position: absolute;
+    inset: -2rem;
+    filter: blur(60px);
+    opacity: 0.3;
+    animation: orb-pulse 4s ease-in-out infinite;
 }
 
-.widget-gradient {
-    @apply absolute inset-0 opacity-50;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(147, 51, 234, 0.06));
+@keyframes orb-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.3;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.5;
+    }
 }
 
 .time-content {
-    @apply relative flex items-center justify-between;
+    position: relative;
+    border-radius: 1.5rem;
+    padding: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: rgba(28, 28, 30, 0.6);
+    backdrop-filter: blur(20px);
 }
 
-.time-left {
-    @apply flex-1;
+.time-info {
+    flex: 1;
 }
 
 .time-label {
-    @apply text-gray-400 text-xs font-medium mb-1 tracking-wide uppercase;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .time-display {
-    @apply flex items-baseline gap-2;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
 }
 
 .time-value {
-    @apply text-4xl font-bold text-white tracking-tight;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1;
+    letter-spacing: -0.02em;
 }
 
 .time-period {
-    @apply text-lg font-semibold text-gray-400;
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
 }
 
-.date-badge {
-    @apply px-4 py-2 rounded-2xl border border-white/10;
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(20px);
-    transition: transform 0.3s;
+/* Enhanced Notification Button */
+.notification-button {
+    flex-shrink: 0;
 }
 
-.date-badge:hover {
-    transform: scale(1.05);
+.notification-icon-wrap {
+    position: relative;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.size{
+    size:large;
+}
+.notification-icon-wraps {
+    position: relative;
+    width: 4rem;
+    height: 3.5rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: yellow;
+    background-color: yellow;
+    border: 2px solid rgba(231, 231, 227, 0.37);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.date-day {
-    @apply text-2xl font-bold text-white text-center leading-none;
+.notification-button:active .notification-icon-wrap {
+    transform: scale(0.95);
 }
 
-.date-month {
-    @apply text-[10px] text-gray-400 font-bold uppercase tracking-wider;
+.notification-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: white;
+    position: relative;
+    z-index: 1;
 }
 
-/* Stats Grid */
+.notification-badge {
+    position: absolute;
+    top: -0.375rem;
+    right: -0.375rem;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.375rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    font-weight: 800;
+    color: white;
+    border: 2px solid #1c1c1e;
+    animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0);
+    }
+}
+
+/* Enhanced Stats Grid */
 .stats-grid {
-    @apply mb-6 grid grid-cols-3 gap-3;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
 }
 
 .stat-card {
-    @apply relative overflow-hidden rounded-2xl p-5 border border-white/10 opacity-0;
-    background: linear-gradient(135deg, rgba(28, 28, 30, 0.95), rgba(44, 44, 46, 0.95));
-    backdrop-filter: blur(40px);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    border-radius: 1.25rem;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(28, 28, 30, 0.6);
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
 }
 
-.stat-card:hover {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
+.stat-card.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
-.stat-glow {
-    @apply absolute -top-10 -right-10 w-20 h-20 opacity-20 blur-2xl rounded-full;
-    transition: all 0.5s;
+.stat-background {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.05), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
-.stat-card:hover .stat-glow {
-    @apply opacity-30 scale-110;
+.stat-card:hover .stat-background {
+    opacity: 1;
 }
 
 .stat-icon-bg {
-    @apply w-11 h-11 rounded-xl flex items-center justify-center mb-3;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    transition: transform 0.3s;
+    position: relative;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.75rem;
 }
 
-.stat-card:hover .stat-icon-bg {
-    transform: scale(1.1) rotate(5deg);
+.stat-icon-glow {
+    position: absolute;
+    inset: -2px;
+    border-radius: 0.75rem;
+    background: inherit;
+    filter: blur(8px);
+    opacity: 0.5;
+    z-index: -1;
 }
 
 .stat-icon {
-    @apply text-2xl;
-}
-
-.stat-info {
-    @apply relative;
+    font-size: 1.25rem;
+    position: relative;
+    z-index: 1;
 }
 
 .stat-value {
-    @apply text-3xl font-bold text-white mb-0.5 tracking-tight;
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 0.25rem;
+    line-height: 1;
+    transition: all 0.3s ease;
+}
+
+.stat-card.loaded .stat-value {
+    animation: count-up 0.6s ease-out;
+}
+
+@keyframes count-up {
+    from {
+        transform: translateY(10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .stat-label {
-    @apply text-[10px] text-gray-400 font-semibold uppercase tracking-widest;
+    font-size: 0.625rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-.stat-trend {
-    @apply absolute top-2 right-2 text-xs font-bold px-2 py-0.5 rounded-full;
+.stat-shimmer {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 3s ease-in-out infinite;
 }
 
-.trend-up {
-    @apply text-green-400 bg-green-500/20 border border-green-500/30;
+@keyframes shimmer {
+    to {
+        left: 100%;
+    }
 }
 
-.trend-down {
-    @apply text-red-400 bg-red-500/20 border border-red-500/30;
-}
-
-/* Search Bar */
+/* Enhanced Search Bar */
 .search-wrapper {
-    @apply mb-6 opacity-0;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-delay: 0.3s;
+}
+
+.search-wrapper.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .search-glass {
-    @apply relative bg-[#1c1c1e] rounded-3xl border border-white/10 shadow-xl flex items-center px-4 py-4;
-    backdrop-filter: blur(40px);
-    transition: all 0.3s;
+    position: relative;
+    background: rgba(28, 28, 30, 0.6);
+    backdrop-filter: blur(20px);
+    border-radius: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem 0 1rem;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
 }
 
 .search-glass:focus-within {
-    @apply border-white/15;
-    transform: translateY(-2px);
-}
-
-.search-icon-wrap {
-    @apply w-10 h-10 flex items-center justify-center;
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
 }
 
 .search-icon {
-    @apply w-5 h-5 text-gray-400 transition-all;
-}
-
-.search-glass:focus-within .search-icon {
-    @apply text-blue-400 scale-110;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
 }
 
 .search-input {
-    @apply flex-1 bg-transparent text-white placeholder-gray-500 text-[15px] focus:outline-none;
+    flex: 1;
+    background: transparent;
+    color: white;
+    placeholder:text-gray-500;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 1rem 0;
+    outline: none;
+    border: none;
 }
 
-.search-voice {
-    @apply w-9 h-9 flex items-center justify-center rounded-xl transition-all;
-    background: rgba(255, 255, 255, 0.08);
+.search-button {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    transition: all 0.2s;
 }
 
-.search-voice:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: scale(1.05);
+.search-button:active {
+    transform: scale(0.95);
 }
 
-.search-voice svg {
-    @apply w-4 h-4 text-gray-400;
-}
-
-/* Apps Grid */
+/* Enhanced Apps Section */
 .apps-section {
-    @apply mb-6;
+    margin-bottom: 1.5rem;
 }
 
 .apps-header {
-    @apply flex items-center justify-between mb-4 px-1 opacity-0;
+    margin-bottom: 1rem;
+    padding: 0 0.25rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-delay: 0.4s;
+}
+
+.apps-header.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .apps-title {
-    @apply text-lg font-bold text-white;
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 0.25rem;
+}
+
+.apps-subtitle {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
 }
 
 .apps-grid {
-    @apply grid grid-cols-4 gap-4;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
 }
 
 .app-card {
-    @apply flex flex-col items-center gap-2 rounded-3xl p-2 relative opacity-0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 0.5rem;
+    border-radius: 1.25rem;
+    background: rgba(28, 28, 30, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.app-card.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
 .app-card:active {
-    transform: scale(0.92);
-}
-
-.app-pulse {
-    @apply absolute inset-0 bg-red-500 rounded-[1.3rem] animate-ping opacity-30;
-}
-
-.app-glow {
-    @apply absolute -inset-1 rounded-[1.4rem] opacity-0 blur-lg;
-    transition: opacity 0.3s;
-}
-
-.app-card:hover .app-glow {
-    @apply opacity-60;
+    transform: scale(0.95);
 }
 
 .app-icon-wrap {
-    @apply relative w-full aspect-square rounded-[1.3rem] shadow-xl flex items-center justify-center overflow-hidden;
-    transition: transform 0.3s;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.25rem;
 }
 
-.app-card:hover .app-icon-wrap {
-    transform: scale(1.08) rotate(-2deg);
-}
-
-.app-icon-wrap::before {
-    content: '';
-    @apply absolute inset-[1px] rounded-[1.2rem];
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.25), transparent);
+.app-glow {
+    position: absolute;
+    inset: -4px;
+    border-radius: 1rem;
+    background: inherit;
+    filter: blur(12px);
+    opacity: 0.6;
+    z-index: -1;
 }
 
 .app-icon {
-    @apply relative text-[32px] filter drop-shadow-2xl;
+    font-size: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.app-info {
+    text-align: center;
+    width: 100%;
 }
 
 .app-name {
-    @apply text-[11px] font-semibold text-gray-300 text-center leading-tight;
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.125rem;
 }
 
-/* Featured Section */
-.featured-section {
-    @apply space-y-4 mb-6;
+.app-description {
+    display: block;
+    font-size: 0.625rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
 }
 
-.featured-header {
-    @apply flex items-center justify-between px-1 opacity-0;
+.app-shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    opacity: 0;
+    animation: shimmer 2s ease-in-out infinite;
 }
 
-.featured-title {
-    @apply text-lg font-bold text-white;
-}
-
-.status-dots {
-    @apply flex gap-1.5;
-}
-
-.dot {
-    @apply w-1.5 h-1.5 rounded-full animate-pulse;
-}
-
-.dot-1 {
-    @apply bg-green-400;
-    box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
-}
-
-.dot-2 {
-    @apply bg-blue-400;
-    box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
-    animation-delay: 0.2s;
-}
-
-.dot-3 {
-    @apply bg-purple-400;
-    box-shadow: 0 0 8px rgba(192, 132, 252, 0.5);
-    animation-delay: 0.4s;
-}
-
-.featured-grid {
-    @apply grid grid-cols-2 gap-3;
-}
-
-.featured-card {
-    @apply relative overflow-hidden rounded-2xl p-4 border border-white/10 opacity-0;
-    background: linear-gradient(135deg, rgba(28, 28, 30, 0.95), rgba(44, 44, 46, 0.95));
-    backdrop-filter: blur(40px);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    transition: all 0.3s;
-}
-
-.featured-card:hover {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
-}
-
-.featured-glow {
-    @apply absolute -top-10 -right-10 w-20 h-20 opacity-20 blur-2xl rounded-full;
-}
-
-.glow-green {
-    background: radial-gradient(circle, rgba(34, 197, 94, 1), transparent);
-}
-
-.glow-red {
-    background: radial-gradient(circle, rgba(239, 68, 68, 1), transparent);
-}
-
-.featured-card:hover .featured-glow {
-    @apply opacity-30 scale-110;
-}
-
-.pulse-indicator {
-    @apply absolute top-3 right-3 z-10;
-}
-
-.pulse-dot {
-    @apply w-2 h-2 bg-red-400 rounded-full animate-pulse;
-    box-shadow: 0 0 8px rgba(248, 113, 113, 0.7);
-}
-
-.pulse-ring {
-    @apply absolute inset-0 bg-red-400 rounded-full animate-ping;
-}
-
-.featured-icon {
-    @apply mb-3 w-11 h-11 rounded-xl flex items-center justify-center shadow-lg;
-    transition: transform 0.3s;
-}
-
-.icon-green {
-    background: linear-gradient(135deg, rgba(34, 197, 94, 1), rgba(16, 185, 129, 1));
-}
-
-.icon-red {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 1), rgba(236, 72, 153, 1));
-}
-
-.featured-card:hover .featured-icon {
-    transform: scale(1.1) rotate(5deg);
-}
-
-.featured-icon span {
-    @apply text-2xl;
-}
-
-.featured-content {
-    @apply relative z-10;
-}
-
-.featured-title-text {
-    @apply text-sm font-bold text-white mb-1;
-}
-
-.featured-desc {
-    @apply text-xs text-gray-400;
-}
-
-.featured-arrow {
-    @apply absolute bottom-4 right-4 text-lg text-gray-400;
-    transition: all 0.3s;
-}
-
-.featured-card:hover .featured-arrow {
-    @apply text-white translate-x-1;
-}
-
-/* Map Card */
+/* Enhanced Map Card */
 .map-card {
-    @apply relative overflow-hidden rounded-2xl border border-white/10 opacity-0;
-    background: linear-gradient(135deg, rgba(28, 28, 30, 0.95), rgba(44, 44, 46, 0.95));
-    backdrop-filter: blur(40px);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    transition: transform 0.3s;
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1.5rem;
+    background: rgba(28, 28, 30, 0.6);
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-delay: 0.5s;
 }
 
-.map-card:hover {
-    transform: scale(1.01);
+.map-card.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.map-header {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
 }
 
 .map-badge {
-    @apply absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-2 rounded-full border border-white/10;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(40px);
-}
-
-.badge-pulse {
-    @apply relative flex h-2 w-2;
-}
-
-.badge-ping {
-    @apply animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(20px);
 }
 
 .badge-dot {
-    @apply relative inline-flex rounded-full h-2 w-2 bg-green-400;
-    box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+    width: 0.5rem;
+    height: 0.5rem;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    50% {
+        opacity: 0.5;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
+    }
 }
 
 .badge-text {
-    @apply text-xs font-bold text-white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+}
+
+.map-expand {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    transition: all 0.2s;
+}
+
+.map-expand:active {
+    transform: scale(0.95);
+}
+
+.map-expand svg {
+    width: 1rem;
+    height: 1rem;
 }
 
 .map-wrap {
-    @apply w-full h-52;
+    width: 100%;
+    height: 14rem;
 }
 
-.map-overlay {
-    @apply absolute inset-0 bg-gradient-to-t from-[#1c1c1e] via-transparent to-transparent pointer-events-none;
-}
-
-.map-info {
-    @apply absolute bottom-0 left-0 right-0 p-4;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
-    backdrop-filter: blur(20px);
-}
-
-.map-info-content {
-    @apply flex items-center justify-between;
-}
-
-.map-title {
-    @apply text-sm font-bold text-white;
-}
-
-.map-subtitle {
-    @apply text-xs text-gray-300;
-}
-
-.map-arrow {
-    @apply text-lg text-gray-400;
-    transition: all 0.3s;
-}
-
-.map-card:hover .map-arrow {
-    @apply text-white translate-x-1;
-}
-
-/* Emergency FAB */
+/* Enhanced Emergency FAB */
 .emergency-fab {
-    @apply fixed bottom-36 right-6 z-40;
-}
-
-.fab-rings {
-    @apply absolute inset-0;
-}
-
-.fab-ring {
-    @apply absolute inset-0 rounded-full animate-ping;
-}
-
-.ring-1 {
-    @apply bg-red-400 opacity-25;
-}
-
-.ring-2 {
-    @apply bg-red-500 opacity-20;
-    animation-delay: 0.5s;
-}
-
-.ring-3 {
-    @apply bg-red-600 opacity-15;
-    animation-delay: 1s;
-}
-
-.fab-glow {
-    @apply absolute inset-0 bg-red-500 rounded-full blur-2xl opacity-60;
+    position: fixed;
+    bottom: 6rem;
+    right: 1rem;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .fab-button {
-    @apply relative w-16 h-16 rounded-full flex items-center justify-center border-4 border-black/30 overflow-hidden;
-    background: linear-gradient(135deg, rgba(239, 68, 68, 1), rgba(220, 38, 38, 1));
-    box-shadow: 0 20px 60px rgba(239, 68, 68, 0.7);
-    transition: transform 0.3s;
-}
-
-.emergency-fab:hover .fab-button {
-    transform: scale(1.08);
-}
-
-.fab-button::before {
-    content: '';
-    @apply absolute inset-[2px] rounded-full;
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.3), transparent);
-}
-
-.fab-icon {
-    @apply relative text-3xl z-10;
-}
-
-.fab-label {
-    @apply absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0;
-    transition: opacity 0.3s;
-}
-
-.emergency-fab:hover .fab-label {
-    @apply opacity-100;
-}
-
-.fab-label span {
-    @apply px-3 py-1 rounded-full text-[10px] font-bold text-white;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* ========== DESKTOP LAYOUT ========== */
-.desktop-header {
-    @apply mb-8 opacity-0;
-}
-
-.header-content {
-    @apply flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 mb-6;
-}
-
-.greeting-wrap {
-    @apply flex-1;
-}
-
-.status-badge {
-    @apply flex items-center gap-2 mb-2;
-}
-
-.status-pulse {
-    @apply relative flex h-2.5 w-2.5;
-}
-
-.status-ping {
-    @apply animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75;
-}
-
-.status-dot {
-    @apply relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500;
-    box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
-}
-
-.status-badge p {
-    @apply text-blue-300/70 text-[10px] font-bold tracking-widest uppercase;
-}
-
-.greeting-text {
-    @apply text-5xl font-extrabold text-white tracking-tight;
-}
-
-.greeting-name {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400;
-    background-size: 200% auto;
-    animation: gradient-x 3s ease infinite;
-}
-
-@keyframes gradient-x {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-}
-
-.clock-display {
-    @apply text-right;
-}
-
-.clock-time {
-    @apply text-6xl font-thin text-white tracking-tight flex items-baseline gap-2;
-}
-
-.clock-period {
-    @apply text-2xl font-medium text-gray-400;
-}
-
-.clock-date {
-    @apply text-white/40 font-medium text-xs uppercase tracking-widest mt-1;
-}
-
-.desktop-grid {
-    @apply grid grid-cols-1 lg:grid-cols-12 gap-6;
-}
-
-.desktop-main {
-    @apply lg:col-span-8 space-y-6;
-}
-
-.features-grid {
-    @apply grid grid-cols-2 lg:grid-cols-3 gap-4;
-}
-
-.feature-card {
-    @apply relative overflow-hidden flex flex-col justify-between p-5 rounded-3xl border border-white/10 opacity-0;
-    backdrop-filter: blur(40px);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    position: relative;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgb(239, 68, 68), rgb(220, 38, 38));
+    border: 2px solid rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.5);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.emergency-fab:active .fab-button {
+    transform: scale(0.95);
+}
+
+.fab-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 9999px;
+    border: 2px solid rgb(239, 68, 68);
+    animation: fab-ring 2s ease-in-out infinite;
+}
+
+@keyframes fab-ring {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+.fab-glow {
+    position: absolute;
+    inset: -8px;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgb(239, 68, 68), transparent);
+    filter: blur(16px);
+    opacity: 0.6;
+    z-index: -1;
+}
+
+.fab-icon {
+    font-size: 1.5rem;
+    position: relative;
+    z-index: 1;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.fab-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Desktop Layout Enhancements */
+.desktop-logo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.desktop-logo-header.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.desktop-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.desktop-logo-icon {
+    position: relative;
+    width: 4rem;
+    height: 4rem;
+    font-size: 2rem;
+    border-radius: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.desktop-logo-glow {
+    position: absolute;
+    inset: -6px;
+    border-radius: 1.5rem;
+    background: inherit;
+    filter: blur(16px);
+    opacity: 0.6;
+    z-index: -1;
+    animation: logo-glow 3s ease-in-out infinite;
+}
+
+@keyframes logo-glow {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+.desktop-logo-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.desktop-logo-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.025em;
+}
+
+.desktop-logo-subtitle {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+}
+
+.emergency-button-desktop {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1.5rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgb(239, 68, 68), rgb(220, 38, 38));
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.emergency-button-desktop:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px rgba(239, 68, 68, 0.5);
+}
+
+.emergency-icon {
+    font-size: 1.5rem;
+    position: relative;
+    z-index: 1;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.emergency-text {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: white;
+    position: relative;
+    z-index: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.emergency-pulse {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3), transparent);
+    animation: emergency-pulse 2s ease-in-out infinite;
+}
+
+@keyframes emergency-pulse {
+    0%, 100% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+/* Enhanced Desktop Header */
+.desktop-header {
+    margin-bottom: 2rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-delay: 0.1s;
+}
+
+.desktop-header.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 2rem;
+}
+
+.greeting-text {
+    font-size: 3rem;
+    font-weight: 800;
+    color: white;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.greeting-name {
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.greeting-subtitle {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 0.5rem;
+    font-weight: 600;
+}
+
+.clock-display {
+    position: relative;
+    text-align: right;
+}
+
+.clock-decoration {
+    position: absolute;
+    inset: -1rem;
+    border-radius: 1.5rem;
+    filter: blur(40px);
+    opacity: 0.3;
+    z-index: -1;
+}
+
+.clock-time {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.clock-digits {
+    font-size: 4rem;
+    font-weight: 200;
+    color: white;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.clock-period {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Desktop Grid */
+.desktop-grid {
+    display: grid;
+    grid-template-columns: 1fr 22rem;
+    gap: 2rem;
+}
+
+.desktop-main {
+    min-width: 0;
+}
+
+/* Enhanced Features Grid */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.feature-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.feature-card.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 .feature-card:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .feature-large {
-    @apply col-span-2 h-40;
+    grid-column: span 2;
+    min-height: 10rem;
 }
 
 .feature-medium {
-    @apply h-32;
+    min-height: 9rem;
 }
 
-.feature-card::before {
-    content: '';
-    @apply absolute inset-0 opacity-10;
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yIDItNCA0LTRoNGEyIDIgMCAwIDEgMCAyczIgMiAyIDRjMCAyLTIgNC00IDRoLTRhMiAyIDAgMCAxIDAtNHoiLz48L2c+PC9nPjwvc3ZnPg==');
+.feature-overlay {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
-.feature-badge {
-    @apply absolute top-4 left-4 z-10 px-2.5 py-1 rounded-full text-[10px] font-bold text-white uppercase tracking-wider;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+.feature-card:hover .feature-overlay {
+    opacity: 1;
 }
 
 .feature-history {
-    @apply absolute top-4 right-4 z-10 flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full border border-white/15 text-[10px] font-bold text-white uppercase tracking-widest;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(20px);
-    transition: all 0.3s;
+    backdrop-filter: blur(10px);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    transition: all 0.2s;
 }
 
 .feature-history:hover {
     background: rgba(0, 0, 0, 0.5);
-    @apply scale-105;
+    transform: scale(1.05);
+}
+
+.feature-history svg {
+    width: 0.875rem;
+    height: 0.875rem;
 }
 
 .feature-content {
-    @apply relative z-0 flex flex-col justify-between h-full;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+}
+
+.feature-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
 .feature-icon-wrap {
-    @apply w-11 h-11 rounded-xl flex items-center justify-center;
+    position: relative;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    transition: transform 0.3s;
 }
 
-.feature-card:hover .feature-icon-wrap {
-    transform: scale(1.15) rotate(8deg);
+.feature-icon-glow {
+    position: absolute;
+    inset: -4px;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    filter: blur(12px);
+    opacity: 0.5;
+    z-index: -1;
 }
 
 .feature-icon {
-    @apply text-2xl;
+    font-size: 1.75rem;
+    position: relative;
+    z-index: 1;
 }
 
 .feature-text {
-    @apply space-y-1 mt-auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
 .feature-subtitle {
-    @apply text-white/60 text-xs font-semibold uppercase tracking-wider;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .feature-title {
-    @apply font-black text-white text-xl leading-tight;
+    font-weight: 800;
+    color: white;
+    font-size: 1.5rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.feature-description {
+    margin-top: auto;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+}
+
+.feature-shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    opacity: 0;
+    animation: shine 3s ease-in-out infinite;
+}
+
+@keyframes shine {
+    0%, 100% {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
 }
 
 /* Desktop Sidebar */
 .desktop-sidebar {
-    @apply lg:col-span-4 space-y-6;
-}
-
-.developer-card {
-    @apply rounded-3xl overflow-hidden opacity-0;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.developer-card:hover {
-    transform: translateY(-3px) scale(1.01);
-    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9);
-}
-
-.dev-card-content {
-    @apply p-6 relative overflow-hidden;
-    background: linear-gradient(135deg, rgba(30, 41, 59, 1), rgba(15, 23, 42, 1));
-    min-height: 200px;
-}
-
-.dev-card-content::after {
-    content: '';
-    @apply absolute inset-0 -translate-x-full;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    animation: dev-card-shine 10s ease-in-out infinite;
-}
-
-@keyframes dev-card-shine {
-    0%, 90%, 100% { transform: translateX(-100%); }
-    45%, 55% { transform: translateX(100%); }
-}
-
-.dev-card-gradient {
-    @apply absolute inset-0 opacity-30 z-0;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(147, 51, 234, 0.15), rgba(236, 72, 153, 0.1));
-    animation: dev-gradient-shift 10s ease-in-out infinite;
-}
-
-@keyframes dev-gradient-shift {
-    0%, 100% { transform: translateX(0) rotate(0deg); }
-    50% { transform: translateX(30px) rotate(5deg); }
-}
-
-.dev-card-header {
-    @apply relative flex items-start justify-between mb-4 z-20;
-}
-
-.dev-card-avatar {
-    @apply relative;
-}
-
-.dev-avatar-glow {
-    @apply absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl blur-2xl opacity-40;
-    animation: dev-avatar-pulse 3s ease-in-out infinite;
-}
-
-@keyframes dev-avatar-pulse {
-    0%, 100% { opacity: 0.3; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(1.15); }
-}
-
-.dev-avatar-ring {
-    @apply absolute inset-0 rounded-2xl;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(147, 51, 234, 0.6), rgba(236, 72, 153, 0.6));
-    padding: 3px;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    animation: dev-ring-spin 5s linear infinite;
-}
-
-@keyframes dev-ring-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-.dev-avatar-icon {
-    @apply relative w-16 h-16 rounded-2xl flex items-center justify-center text-3xl;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
-    backdrop-filter: blur(20px);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
     display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.dev-card-badge {
-    @apply px-3 py-1.5 rounded-full text-xs font-bold border;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2));
-    border-color: rgba(59, 130, 246, 0.3);
-    color: rgb(147, 197, 253);
-    backdrop-filter: blur(20px);
-    animation: badge-glow 2s ease-in-out infinite;
-}
-
-.dev-card-body {
-    @apply relative z-20;
-}
-
-.dev-card-label {
-    @apply text-xs text-gray-400 font-bold uppercase tracking-wider mb-2;
-}
-
-.dev-card-name {
-    @apply text-2xl font-black text-white mb-2 leading-tight;
-    background: linear-gradient(135deg, #fff, #cbd5e1);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: name-shimmer 3s ease-in-out infinite;
-}
-
-.dev-card-degree {
-    @apply text-sm text-gray-400 mb-4 leading-relaxed;
-}
-
-.dev-card-tags {
-    @apply flex items-center gap-2 flex-wrap;
-}
-
-.dev-tag {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border;
-    background: rgba(59, 130, 246, 0.15);
-    border-color: rgba(59, 130, 246, 0.3);
-    color: rgb(147, 197, 253);
-    transition: all 0.3s;
-}
-
-.dev-tag:hover {
-    background: rgba(59, 130, 246, 0.25);
-    transform: translateY(-2px);
-}
-
-.id-card {
-    @apply aspect-[1.6/1] rounded-3xl overflow-hidden opacity-0;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-}
-
-.id-card-content {
-    @apply h-full p-6 flex flex-col justify-between relative overflow-hidden;
-    background: linear-gradient(135deg, rgba(51, 65, 85, 1), rgba(30, 41, 59, 1), rgba(0, 0, 0, 1));
-    transition: transform 0.3s;
-}
-
-.id-card:hover .id-card-content {
-    transform: scale(1.01);
-}
-
-.id-card-content::before {
-    content: '';
-    @apply absolute inset-0;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(147, 51, 234, 0.05));
-}
-
-.id-card-header {
-    @apply flex justify-between items-start relative z-10;
-}
-
-.id-logo {
-    @apply w-10 h-10 rounded-full flex items-center justify-center text-lg border border-white/20;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-}
-
-.id-number {
-    @apply text-right;
-}
-
-.id-label {
-    @apply text-[9px] text-white/50 uppercase tracking-widest font-bold;
-}
-
-.id-value {
-    @apply text-white font-mono font-bold text-sm tracking-widest opacity-80;
-}
-
-.id-card-footer {
-    @apply relative z-10;
-}
-
-.id-name {
-    @apply text-2xl text-white font-black tracking-wide uppercase mb-1 truncate;
-}
-
-.id-badges {
-    @apply flex items-center gap-2 flex-wrap;
-}
-
-.id-badge {
-    @apply px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border;
-}
-
-.badge-primary {
-    background: linear-gradient(to right, rgba(59, 130, 246, 0.25), rgba(37, 99, 235, 0.25));
-    @apply text-blue-300 border-blue-500/40;
-}
-
-.badge-success {
-    background: linear-gradient(to right, rgba(34, 197, 94, 0.25), rgba(22, 163, 74, 0.25));
-    @apply text-green-300 border-green-500/40;
+    flex-direction: column;
+    gap: 1.5rem;
 }
 
 .sidebar-card {
-    @apply block rounded-3xl overflow-hidden h-40 opacity-0;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    transition: all 0.3s;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(28, 28, 30, 0.6);
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar-card:hover {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
-}
-
-.card-content {
-    @apply h-full p-6 flex flex-col justify-between relative overflow-hidden;
-}
-
-.card-polls .card-content {
-    background: linear-gradient(135deg, rgba(202, 138, 4, 1), rgba(161, 98, 7, 1));
-}
-
-.card-emergency .card-content {
-    background: linear-gradient(135deg, rgba(220, 38, 38, 1), rgba(185, 28, 28, 1));
-}
-
-.card-content::before {
-    content: '';
-    @apply absolute inset-0 opacity-10;
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yIDItNCA0LTRoNGEyIDIgMCAwIDEgMCAyczIgMiAyIDRjMCAyLTIgNC00IDRoLTRhMiAyIDAgMCAxIDAtNHoiLz48L2c+PC9nPjwvc3ZnPg==');
+.sidebar-card.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .card-header {
-    @apply relative flex justify-between items-start z-10;
-}
-
-.card-icon {
-    @apply w-11 h-11 rounded-xl flex items-center justify-center text-2xl;
-    background: rgba(255, 255, 255, 0.2);
-    transition: transform 0.3s;
-}
-
-.sidebar-card:hover .card-icon {
-    transform: scale(1.1) rotate(5deg);
-}
-
-.card-badge {
-    @apply text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest;
-    background: rgba(255, 255, 255, 1);
-}
-
-.card-polls .card-badge {
-    @apply text-amber-600;
-}
-
-.badge-emergency {
-    @apply animate-pulse text-red-600;
-}
-
-.card-footer {
-    @apply relative z-10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
 }
 
 .card-title {
-    @apply font-black text-white text-2xl uppercase tracking-wide;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: white;
 }
 
-.card-subtitle {
-    @apply text-white/80 text-xs font-bold mt-1;
+.card-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
 }
 
-.emergency-pulse-1,
-.emergency-pulse-2 {
-    @apply absolute -top-2 -right-2 w-6 h-6 rounded-full animate-ping;
+.stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
-.emergency-pulse-1 {
-    @apply bg-white/30;
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
 }
 
-.emergency-pulse-2 {
-    @apply bg-white/20;
-    animation-delay: 0.5s;
+.stat-item:hover {
+    background: rgba(255, 255, 255, 0.08);
 }
 
+.stat-item-icon {
+    position: relative;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.stat-item-glow {
+    position: absolute;
+    inset: -2px;
+    border-radius: 0.75rem;
+    background: inherit;
+    filter: blur(8px);
+    opacity: 0.5;
+    z-index: -1;
+}
+
+.stat-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-item-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: white;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+    transition: all 0.3s ease;
+}
+
+.stat-item.loaded .stat-item-value {
+    animation: count-up 0.6s ease-out;
+}
+
+.stat-item-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+}
+
+.stat-item-trend {
+    font-size: 1.25rem;
+    color: #10b981;
+    flex-shrink: 0;
+}
+
+/* Desktop Map */
 .sidebar-map {
-    @apply relative rounded-3xl p-1 h-80 opacity-0;
-    background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(40px);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    transition: transform 0.3s;
+    position: relative;
+    border-radius: 1.5rem;
+    padding: 0.75rem;
+    min-height: 20rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(28, 28, 30, 0.6);
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar-map:hover {
-    transform: translateY(-3px);
+.sidebar-map.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .map-badge-desk {
-    @apply absolute top-4 left-4 z-10 px-3 py-1 rounded-full text-xs font-bold text-white border border-white/15;
-    background: rgba(0, 0, 0, 0.7);
+    position: absolute;
+    top: 1.5rem;
+    left: 1.5rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(20px);
 }
 
+.map-expand-desk {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 10;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    transition: all 0.2s;
+}
+
+.map-expand-desk:hover {
+    transform: scale(1.05);
+}
+
+.map-expand-desk svg {
+    width: 1rem;
+    height: 1rem;
+}
+
 .map-wrapper {
-    @apply w-full h-full rounded-[1.8rem] overflow-hidden opacity-90;
+    width: 100%;
+    height: 100%;
+    min-height: 18rem;
+    border-radius: 1rem;
+    overflow: hidden;
 }
 
-/* ========== ANIMATIONS ========== */
-.fade-in {
-    animation: fade-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes fade-in {
-    from { opacity: 0; transform: translateY(-15px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.scale-in {
-    animation: scale-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes scale-in {
-    from { opacity: 0; transform: scale(0.92); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-.slide-up {
-    animation: slide-up 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes slide-up {
-    from { opacity: 0; transform: translateY(25px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.slide-right {
-    animation: slide-right 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes slide-right {
-    from { opacity: 0; transform: translateX(-25px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-.slide-down {
-    animation: slide-down 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes slide-down {
-    from { opacity: 0; transform: translateY(-25px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.scale-fade {
-    animation: scale-fade 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes scale-fade {
-    from { opacity: 0; transform: scale(0.85); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-/* ========== TRANSITIONS ========== */
-.intro-fade-enter-active,
-.intro-fade-leave-active {
-    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.intro-fade-enter-from,
-.intro-fade-leave-to {
-    opacity: 0;
-}
-
+/* Transitions */
 .toast-enter-active {
-    animation: toast-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: toast-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toast-leave-active {
-    transition: all 0.3s ease-in;
+    transition: all 0.3s ease;
 }
 
 .toast-leave-to {
@@ -1947,41 +1872,96 @@ const handleAppClick = (app) => {
     transform: translateX(100%);
 }
 
-@keyframes toast-enter {
-    from { opacity: 0; transform: translateX(100%) scale(0.9); }
-    to { opacity: 1; transform: translateX(0) scale(1); }
-}
-
-/* ========== RESPONSIVE ========== */
-@media (max-width: 640px) {
-    .time-value {
-        @apply text-3xl;
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(100%) translateY(-10px);
     }
-    .date-badge {
-        @apply px-3 py-1.5;
-    }
-    .date-day {
-        @apply text-xl;
+    to {
+        opacity: 1;
+        transform: translateX(0) translateY(0);
     }
 }
 
-/* ========== ACCESSIBILITY ========== */
+/* Responsive Enhancements */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .mobile-layout {
+        max-width: 36rem;
+        padding: 0 1.5rem 8rem;
+    }
+    
+    .apps-grid {
+        gap: 1rem;
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1439px) {
+    .desktop-grid {
+        grid-template-columns: 1fr 20rem;
+        gap: 1.5rem;
+    }
+    
+    .greeting-text {
+        font-size: 2.5rem;
+    }
+    
+    .clock-digits {
+        font-size: 3.5rem;
+    }
+}
+
+@media (min-width: 1440px) {
+    .desktop-layout {
+        max-width: 90rem;
+    }
+}
+
+/* Landscape Mobile Optimizations */
+@media (max-height: 600px) and (orientation: landscape) {
+    .time-widget {
+        margin-bottom: 1rem;
+    }
+    
+    .stats-grid {
+        margin-bottom: 1rem;
+    }
+    
+    .apps-section {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Accessibility */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
         animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
 }
 
-/* ========== PRINT ========== */
-@media print {
-    .intro-overlay,
-    .emergency-fab,
-    .skip-btn {
-        display: none !important;
+/* Touch device optimizations */
+@media (hover: none) {
+    .feature-card:hover,
+    .stat-item:hover {
+        transform: none;
+    }
+    
+    .feature-card:active,
+    .stat-item:active {
+        transform: scale(0.98);
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .stat-card,
+    .app-card,
+    .feature-card,
+    .sidebar-card {
+        border-width: 2px;
+        border-color: rgba(255, 255, 255, 0.3);
     }
 }
 </style>

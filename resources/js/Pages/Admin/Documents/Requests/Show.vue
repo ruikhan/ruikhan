@@ -269,7 +269,12 @@ const currentStatus = getStatusConfig(props.docRequest.status);
                         </div>
 
                         <!-- Request Tracker -->
-                        <RequestTracker :status="docRequest.status" />
+<RequestTracker 
+    :status="docRequest.status" 
+    :department="docRequest.department"
+    :documentType="docRequest.document_type"
+    :requestData="docRequest.data || {}"
+/>
 
                         <!-- Admin Action Panel -->
                         <div class="relative overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl">
