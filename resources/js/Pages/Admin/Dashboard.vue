@@ -1,8 +1,8 @@
 <script setup>
 import DashboardMap from '@/Components/DashboardMap.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const user = usePage().props.auth.user;
 
@@ -25,8 +25,111 @@ const props = defineProps({
     }
 });
 
+// ✅ NEW: Loading and Error States
+const isLoading = ref(false);
+const error = ref(null);
+const retryCount = ref(0);
+const maxRetries = 3;
+
+// ✅ NEW: Toast Notification System
+const toast = ref({
+    show: false,
+    message: '',
+    type: 'info' // 'success', 'error', 'warning', 'info'
+});
+
+const showToast = (message, type = 'info') => {
+    toast.value = { show: true, message, type };
+    setTimeout(() => {
+        toast.value.show = false;
+    }, 4000);
+};
+
+// ✅ NEW: Safe data accessors with fallbacks
+const safeStats = computed(() => {
+    if (!props.stats || typeof props.stats !== 'object') {
+        console.warn('[Dashboard] Invalid stats data received');
+        return { revenue: 0, citizens: 0 };
+    }
+    return {
+        revenue: Number(props.stats.revenue) || 0,
+        citizens: Number(props.stats.citizens) || 0
+    };
+});
+
+const safePendingTasks = computed(() => {
+    if (!Array.isArray(props.pendingTasks)) {
+        console.warn('[Dashboard] Invalid pendingTasks data received');
+        return [];
+    }
+    return props.pendingTasks.filter(task => task && task.id);
+});
+
+const safeRecentActivity = computed(() => {
+    if (!Array.isArray(props.recentActivity)) {
+        console.warn('[Dashboard] Invalid recentActivity data received');
+        return [];
+    }
+    return props.recentActivity.filter(item => item && item.id);
+});
+
+const safeDepartmentLoad = computed(() => {
+    if (!Array.isArray(props.departmentLoad)) {
+        console.warn('[Dashboard] Invalid departmentLoad data received');
+        return [];
+    }
+    return props.departmentLoad.filter(dept => dept && dept.name);
+});
+
+// ✅ NEW: Refresh data with error handling
+const refreshDashboard = async () => {
+    if (isLoading.value) return;
+    
+    try {
+        isLoading.value = true;
+        error.value = null;
+        
+        // Use Inertia's reload with error handling
+        router.reload({
+            only: ['stats', 'recentActivity', 'pendingTasks', 'departmentLoad'],
+            onError: (errors) => {
+                console.error('[Dashboard] Reload failed:', errors);
+                error.value = 'Failed to refresh dashboard data';
+                showToast('Failed to refresh dashboard', 'error');
+                
+                // Retry logic
+                if (retryCount.value < maxRetries) {
+                    retryCount.value++;
+                    showToast(`Retrying... (${retryCount.value}/${maxRetries})`, 'warning');
+                    setTimeout(refreshDashboard, 2000 * retryCount.value);
+                }
+            },
+            onSuccess: () => {
+                retryCount.value = 0;
+                showToast('Dashboard refreshed', 'success');
+            },
+            onFinish: () => {
+                isLoading.value = false;
+            }
+        });
+    } catch (err) {
+        console.error('[Dashboard] Unexpected error:', err);
+        error.value = 'An unexpected error occurred';
+        showToast('An unexpected error occurred', 'error');
+        isLoading.value = false;
+    }
+};
+
 const formatMoney = (value) => {
-    return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value || 0);
+    try {
+        return new Intl.NumberFormat('en-PH', { 
+            style: 'currency', 
+            currency: 'PHP' 
+        }).format(value || 0);
+    } catch (err) {
+        console.error('[Dashboard] Format money error:', err);
+        return '₱0.00';
+    }
 };
 
 // Animated counter for stats
@@ -34,36 +137,64 @@ const animatedRevenue = ref(0);
 const animatedCitizens = ref(0);
 
 const animateValue = (start, end, duration, callback) => {
-    const range = end - start;
-    const increment = range / (duration / 16);
-    let current = start;
-    
-    const timer = setInterval(() => {
-        current += increment;
-        if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
-            current = end;
-            clearInterval(timer);
-        }
-        callback(Math.floor(current));
-    }, 16);
+    try {
+        const range = end - start;
+        const increment = range / (duration / 16);
+        let current = start;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+                current = end;
+                clearInterval(timer);
+            }
+            callback(Math.floor(current));
+        }, 16);
+        
+        // Cleanup after animation
+        setTimeout(() => clearInterval(timer), duration + 100);
+    } catch (err) {
+        console.error('[Dashboard] Animation error:', err);
+        callback(end); // Fallback to final value
+    }
 };
 
 // Live clock
 const time = ref('');
 const date = ref('');
 const updateTime = () => {
-    const now = new Date();
-    time.value = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-    date.value = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    try {
+        const now = new Date();
+        time.value = now.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            second: '2-digit' 
+        });
+        date.value = now.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'long', 
+            day: 'numeric', 
+            year: 'numeric' 
+        });
+    } catch (err) {
+        console.error('[Dashboard] Clock update error:', err);
+        time.value = '--:--:--';
+        date.value = 'Date unavailable';
+    }
 };
 
 // System status
 const systemStatus = computed(() => {
-    const total = props.pendingTasks?.length || 0;
-    if (total === 0) return { text: 'Optimal', color: 'text-emerald-400', bg: 'bg-emerald-500', glow: 'shadow-emerald-500/50' };
-    if (total < 5) return { text: 'Nominal', color: 'text-blue-400', bg: 'bg-blue-500', glow: 'shadow-blue-500/50' };
-    if (total < 10) return { text: 'Active', color: 'text-amber-400', bg: 'bg-amber-500', glow: 'shadow-amber-500/50' };
-    return { text: 'Critical', color: 'text-red-400', bg: 'bg-red-500', glow: 'shadow-red-500/50' };
+    try {
+        const total = safePendingTasks.value.length;
+        if (total === 0) return { text: 'Optimal', color: 'text-emerald-400', bg: 'bg-emerald-500', glow: 'shadow-emerald-500/50' };
+        if (total < 5) return { text: 'Nominal', color: 'text-blue-400', bg: 'bg-blue-500', glow: 'shadow-blue-500/50' };
+        if (total < 10) return { text: 'Active', color: 'text-amber-400', bg: 'bg-amber-500', glow: 'shadow-amber-500/50' };
+        return { text: 'Critical', color: 'text-red-400', bg: 'bg-red-500', glow: 'shadow-red-500/50' };
+    } catch (err) {
+        console.error('[Dashboard] System status error:', err);
+        return { text: 'Unknown', color: 'text-slate-400', bg: 'bg-slate-500', glow: 'shadow-slate-500/50' };
+    }
 });
 
 // Mouse parallax
@@ -71,35 +202,70 @@ const mouseX = ref(0);
 const mouseY = ref(0);
 let mouseRAF = null;
 const handleMouseMove = (e) => {
-    if (mouseRAF) return;
-    mouseRAF = requestAnimationFrame(() => {
-        mouseX.value = (e.clientX / window.innerWidth - 0.5) * 20;
-        mouseY.value = (e.clientY / window.innerHeight - 0.5) * 20;
-        mouseRAF = null;
-    });
+    try {
+        if (mouseRAF) return;
+        mouseRAF = requestAnimationFrame(() => {
+            mouseX.value = (e.clientX / window.innerWidth - 0.5) * 20;
+            mouseY.value = (e.clientY / window.innerHeight - 0.5) * 20;
+            mouseRAF = null;
+        });
+    } catch (err) {
+        console.error('[Dashboard] Mouse move error:', err);
+    }
 };
 
 let clockTimer;
-onMounted(() => {
-    updateTime();
-    clockTimer = setInterval(updateTime, 1000);
-    
-    // Animate stats on mount
-    animateValue(0, props.stats?.revenue || 0, 2000, (val) => {
-        animatedRevenue.value = val;
-    });
-    animateValue(0, props.stats?.citizens || 0, 2000, (val) => {
-        animatedCitizens.value = val;
-    });
+let autoRefreshTimer;
 
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+onMounted(() => {
+    try {
+        updateTime();
+        clockTimer = setInterval(updateTime, 1000);
+        
+        // Animate stats on mount
+        animateValue(0, safeStats.value.revenue, 2000, (val) => {
+            animatedRevenue.value = val;
+        });
+        animateValue(0, safeStats.value.citizens, 2000, (val) => {
+            animatedCitizens.value = val;
+        });
+
+        window.addEventListener('mousemove', handleMouseMove, { passive: true });
+        
+        // ✅ NEW: Auto-refresh every 30 seconds
+        autoRefreshTimer = setInterval(refreshDashboard, 30000);
+    } catch (err) {
+        console.error('[Dashboard] Mount error:', err);
+        showToast('Failed to initialize dashboard', 'error');
+    }
 });
 
 onUnmounted(() => {
-    clearInterval(clockTimer);
-    window.removeEventListener('mousemove', handleMouseMove);
-    if (mouseRAF) cancelAnimationFrame(mouseRAF);
+    try {
+        clearInterval(clockTimer);
+        clearInterval(autoRefreshTimer);
+        window.removeEventListener('mousemove', handleMouseMove);
+        if (mouseRAF) cancelAnimationFrame(mouseRAF);
+    } catch (err) {
+        console.error('[Dashboard] Unmount error:', err);
+    }
 });
+
+// ✅ NEW: Watch for prop changes and handle errors
+watch(() => props.stats, (newStats) => {
+    if (!newStats || typeof newStats !== 'object') {
+        console.warn('[Dashboard] Invalid stats received in watch');
+        return;
+    }
+    
+    // Re-animate on data change
+    animateValue(animatedRevenue.value, newStats.revenue || 0, 1000, (val) => {
+        animatedRevenue.value = val;
+    });
+    animateValue(animatedCitizens.value, newStats.citizens || 0, 1000, (val) => {
+        animatedCitizens.value = val;
+    });
+}, { deep: true });
 
 const getPriorityBadge = (status) => {
     const badges = {
@@ -145,6 +311,47 @@ const getAvatarGradient = (name) => {
     <Head title="Command Center" />
 
     <AuthenticatedLayout>
+        <!-- ✅ NEW: Toast Notification -->
+        <Transition name="toast">
+            <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">
+                <span class="toast-icon">
+                    <span v-if="toast.type === 'success'">✓</span>
+                    <span v-else-if="toast.type === 'error'">✕</span>
+                    <span v-else-if="toast.type === 'warning'">⚠</span>
+                    <span v-else>ℹ</span>
+                </span>
+                <span class="toast-message">{{ toast.message }}</span>
+            </div>
+        </Transition>
+
+        <!-- ✅ NEW: Error Banner -->
+        <Transition name="error-banner">
+            <div v-if="error" class="error-banner">
+                <div class="error-banner-content">
+                    <span class="error-icon">⚠️</span>
+                    <span class="error-text">{{ error }}</span>
+                    <button @click="refreshDashboard" class="error-retry-btn">
+                        Retry
+                    </button>
+                    <button @click="error = null" class="error-close-btn">
+                        ✕
+                    </button>
+                </div>
+            </div>
+        </Transition>
+
+        <!-- ✅ NEW: Loading Overlay -->
+        <Transition name="loading-overlay">
+            <div v-if="isLoading" class="loading-overlay">
+                <div class="loading-spinner">
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                </div>
+                <p class="loading-text">Refreshing dashboard...</p>
+            </div>
+        </Transition>
+
         <!-- Enhanced Background Layer -->
         <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
             <!-- Base gradient -->
@@ -221,6 +428,18 @@ const getAvatarGradient = (name) => {
                                 </div>
                                 <p class="text-xs text-slate-500 mt-1 hidden sm:block">{{ date }}</p>
                             </div>
+
+                            <!-- ✅ NEW: Refresh Button -->
+                            <button 
+                                @click="refreshDashboard"
+                                :disabled="isLoading"
+                                class="ml-auto px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-xs font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                <svg class="w-4 h-4" :class="{ 'animate-spin': isLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                <span class="hidden sm:inline">{{ isLoading ? 'Refreshing...' : 'Refresh' }}</span>
+                            </button>
                         </div>
                         
                         <!-- Enhanced Stats Grid -->
@@ -267,7 +486,7 @@ const getAvatarGradient = (name) => {
                                         <span class="sm:hidden">Queue</span>
                                     </div>
                                     <div class="stat-value from-amber-400 to-orange-400">
-                                        {{ pendingTasks?.length || 0 }}
+                                        {{ safePendingTasks.length }}
                                     </div>
                                     <div class="stat-label text-amber-500/60">Tasks</div>
                                 </div>
@@ -292,7 +511,7 @@ const getAvatarGradient = (name) => {
                                 <span class="text-xl sm:text-2xl">⚡</span>
                                 <span class="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Priority Queue</span>
                                 <span class="px-2 sm:px-3 py-1 bg-amber-500/20 border border-amber-500/30 rounded-full text-xs text-amber-400 font-bold">
-                                    {{ pendingTasks?.length || 0 }}
+                                    {{ safePendingTasks.length }}
                                 </span>
                             </h3>
                             <button class="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg shadow-blue-500/20 active:scale-95">
@@ -301,7 +520,7 @@ const getAvatarGradient = (name) => {
                         </div>
                         
                         <div class="relative divide-y divide-white/5 max-h-[500px] overflow-y-auto premium-scrollbar">
-                            <div v-for="(task, index) in pendingTasks" :key="task.id" 
+                            <div v-for="(task, index) in safePendingTasks" :key="task.id" 
                                 class="p-4 sm:p-5 hover:bg-white/5 transition-all group/task cursor-pointer backdrop-blur-sm"
                                 :style="`animation: slideInRight 0.4s ease-out ${index * 0.05}s backwards`">
                                 <div class="flex items-center justify-between gap-3 sm:gap-4">
@@ -336,7 +555,7 @@ const getAvatarGradient = (name) => {
                                 </div>
                             </div>
                             
-                            <div v-if="pendingTasks?.length === 0" class="p-12 sm:p-16 text-center">
+                            <div v-if="safePendingTasks.length === 0" class="p-12 sm:p-16 text-center">
                                 <div class="text-5xl sm:text-6xl mb-4 opacity-20 animate-bounce-slow">✨</div>
                                 <p class="text-slate-500 text-sm font-medium">All tasks completed</p>
                                 <p class="text-slate-600 text-xs mt-1">System status: Optimal</p>
@@ -356,7 +575,7 @@ const getAvatarGradient = (name) => {
                             </h3>
                             
                             <div class="relative space-y-4 sm:space-y-5">
-                                <div v-for="dept in departmentLoad" :key="dept.name" class="group/dept">
+                                <div v-for="dept in safeDepartmentLoad" :key="dept.name" class="group/dept">
                                     <div class="flex justify-between items-center text-sm mb-2">
                                         <span class="text-white font-medium truncate mr-2">{{ dept.name }}</span>
                                         <span :class="dept.count > dept.capacity * 0.9 ? 'text-red-400 font-bold' : 'text-slate-400'" class="font-mono text-xs flex-shrink-0">
@@ -372,7 +591,7 @@ const getAvatarGradient = (name) => {
                                     </div>
                                 </div>
                                 
-                                <div v-if="departmentLoad?.length === 0" class="text-center text-slate-500 text-sm py-8">
+                                <div v-if="safeDepartmentLoad.length === 0" class="text-center text-slate-500 text-sm py-8">
                                     <div class="text-3xl mb-2 opacity-20">📊</div>
                                     No department data
                                 </div>
@@ -442,7 +661,7 @@ const getAvatarGradient = (name) => {
                         
                         <div class="p-4 sm:p-6 max-h-[400px] sm:max-h-[450px] overflow-y-auto premium-scrollbar">
                             <div class="space-y-4">
-                                <div v-for="(item, index) in recentActivity" :key="item.id" 
+                                <div v-for="(item, index) in safeRecentActivity" :key="item.id" 
                                     class="relative pl-6 pb-4 border-l-2 border-slate-700/50 hover:border-blue-500/50 transition-all group/activity"
                                     :style="`animation: slideInLeft 0.4s ease-out ${index * 0.05}s backwards`">
                                     <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 border-2 border-slate-900 transform group-hover/activity:scale-125 transition-transform shadow-lg shadow-blue-500/30"></div>
@@ -455,7 +674,7 @@ const getAvatarGradient = (name) => {
                                     </div>
                                 </div>
                                 
-                                <div v-if="!recentActivity?.length" class="text-center py-12 sm:py-16">
+                                <div v-if="safeRecentActivity.length === 0" class="text-center py-12 sm:py-16">
                                     <div class="text-4xl sm:text-5xl mb-3 opacity-10 animate-pulse">📡</div>
                                     <p class="text-slate-500 text-sm">Monitoring activity...</p>
                                 </div>
@@ -701,6 +920,286 @@ const getAvatarGradient = (name) => {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+}
+/* ✅ NEW: Toast Notification Styles */
+.toast {
+    position: fixed;
+    top: 6rem;
+    right: 1.5rem;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    background: rgba(18, 18, 20, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-width: 24rem;
+}
+
+.toast-success {
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.toast-error {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.toast-warning {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.toast-info {
+    border-color: rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.toast-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    font-size: 1rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.toast-success .toast-icon {
+    background: rgba(34, 197, 94, 0.2);
+    color: rgb(134, 239, 172);
+}
+
+.toast-error .toast-icon {
+    background: rgba(239, 68, 68, 0.2);
+    color: rgb(252, 165, 165);
+}
+
+.toast-warning .toast-icon {
+    background: rgba(245, 158, 11, 0.2);
+    color: rgb(251, 191, 36);
+}
+
+.toast-info .toast-icon {
+    background: rgba(59, 130, 246, 0.2);
+    color: rgb(147, 197, 253);
+}
+
+.toast-message {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: white;
+}
+
+.toast-enter-active {
+    animation: toast-in 0.3s ease;
+}
+
+.toast-leave-active {
+    animation: toast-out 0.3s ease;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes toast-out {
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* ✅ NEW: Error Banner Styles */
+.error-banner {
+    position: fixed;
+    top: 5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    width: calc(100% - 2rem);
+    max-width: 48rem;
+}
+
+.error-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    background: rgba(239, 68, 68, 0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.2);
+}
+
+.error-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.error-text {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgb(252, 165, 165);
+}
+
+.error-retry-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background: rgba(239, 68, 68, 0.2);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.error-retry-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: scale(1.05);
+}
+
+.error-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.error-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.error-banner-enter-active {
+    animation: slide-down 0.3s ease;
+}
+
+.error-banner-leave-active {
+    animation: slide-up 0.3s ease;
+}
+
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes slide-up {
+    to {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-100%);
+    }
+}
+
+/* ✅ NEW: Loading Overlay Styles */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+}
+
+.loading-spinner {
+    position: relative;
+    width: 60px;
+    height: 60px;
+}
+
+.spinner-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    animation: spinner-rotate 1.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+.spinner-ring:nth-child(1) {
+    border-top-color: #3b82f6;
+    animation-delay: -0.45s;
+}
+
+.spinner-ring:nth-child(2) {
+    border-right-color: #a855f7;
+    animation-delay: -0.3s;
+}
+
+.spinner-ring:nth-child(3) {
+    border-bottom-color: #ec4899;
+    animation-delay: -0.15s;
+}
+
+@keyframes spinner-rotate {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.loading-overlay-enter-active {
+    animation: fade-in 0.2s ease;
+}
+
+.loading-overlay-leave-active {
+    animation: fade-out 0.3s ease;
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fade-out {
+    to {
+        opacity: 0;
     }
 }
 </style>

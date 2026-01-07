@@ -16,57 +16,41 @@ use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
     public function create(): Response
     {
         return Inertia::render('Auth/Register');
     }
 
-    /**
-     * Handle an incoming registration request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:'.User::class,
-            'phone_number' => 'required|string|max:20', // New Field
-            'role' => 'required|string|in:resident,business_owner', // New Field
+            'phone_number' => 'required|string|max:20',
+            'role' => 'required|string|in:resident,business_owner',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'phone_number' => $request->phone_number, // Save Phone
-            'role' => $request->role,                 // Save Role
+            'phone_number' => $request->phone_number,
+            'role' => $request->role,
             'password' => Hash::make($request->password),
         ]);
 
         event(new Registered($user));
-
         Auth::login($user);
 
-        return redirect(RouteServiceProvider::HOME);
+        // ✅ CHANGED: Role-based redirection
+        return $this->redirectBasedOnRole($user);
     }
 
-    /**
-     * Display the admin registration view.
-     */
     public function createAdmin(): Response
     {
         return Inertia::render('Auth/RegisterAdmin');
     }
 
-    /**
-     * Handle an incoming admin registration request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function storeAdmin(Request $request): RedirectResponse
     {
         $request->validate([
@@ -80,14 +64,28 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'phone_number' => $request->phone_number,
-            'role' => 'admin', // Always set to admin
+            'role' => 'admin',
             'password' => Hash::make($request->password),
         ]);
 
         event(new Registered($user));
-
         Auth::login($user);
 
-        return redirect(RouteServiceProvider::HOME);
+        // ✅ CHANGED: Direct admin redirect
+        return redirect()->route('admin.dashboard');
+    }
+
+    // ✅ NEW METHOD
+    protected function redirectBasedOnRole(User $user): RedirectResponse
+    {
+        switch ($user->role) {
+            case 'admin':
+                return redirect()->route('admin.dashboard');
+            case 'business_owner':
+                return redirect()->route('business.dashboard');
+            case 'resident':
+            default:
+                return redirect()->route('dashboard');
+        }
     }
 }

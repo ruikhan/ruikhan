@@ -30,8 +30,8 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\NotificationController;
 
-// ✅ FIXED: Import the Admin Middleware here so we don't rely on the alias
 use App\Http\Middleware\AdminMiddleware; 
+use App\Http\Middleware\EnsureUserIsBusiness;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,21 +49,14 @@ Route::get('/', function () {
     ]);
 });
 
-// ✅ ONBOARDING: Terms/Blueprint page (shown first after login)
-Route::get('/onboarding', function () {
-    return Inertia::render('Documentation/ProjectBlueprint'); 
-})->middleware(['auth', 'verified'])->name('onboarding');
+// ============================================================================
+// ✅ ROLE-BASED DASHBOARDS (Must be before generic /dashboard)
+// ============================================================================
 
-// ✅ DASHBOARD: The actual Command Center
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
-
-
-// ✅ ADMIN ROUTES (Fixed: Uses Class Reference instead of 'admin' alias)
+// ✅ ADMIN DASHBOARD & ROUTES
 Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
     
-    // Command Center
+    // Admin Command Center
     Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
 
     // Document Management
@@ -75,25 +68,56 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
 });
 
+// ✅ BUSINESS OWNER DASHBOARD & ROUTES
+Route::middleware(['auth', 'verified', EnsureUserIsBusiness::class])->prefix('business')->name('business.')->group(function () {
+    
+    // Business Dashboard
+    Route::get('/dashboard', [BusinessDashboardController::class, 'index'])->name('dashboard');
+    Route::patch('/status', [BusinessDashboardController::class, 'updateStatus'])->name('update-status');
+    Route::patch('/update', [BusinessDashboardController::class, 'update'])->name('update');
+    
+    // Product Management
+    Route::resource('products', ProductController::class);
+    Route::patch('/products/{product}/toggle', [ProductController::class, 'toggleAvailability'])->name('products.toggle');
+    
+    // Job Postings (Business Owners Only)
+    Route::get('/jobs/create', [JobPostingController::class, 'create'])->name('jobs.create');
+    Route::post('/jobs', [JobPostingController::class, 'store'])->name('jobs.store');
+});
 
-// ✅ AUTHENTICATED CITIZEN ROUTES
-Route::middleware('auth')->group(function () {
+// ✅ RESIDENT DASHBOARD (Default for regular users)
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Resident Dashboard (This is the default dashboard for residents)
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+});
+
+// ============================================================================
+// ✅ ONBOARDING (shown first after login for new users)
+// ============================================================================
+Route::get('/onboarding', function () {
+    return Inertia::render('Documentation/ProjectBlueprint'); 
+})->middleware(['auth', 'verified'])->name('onboarding');
+
+// ============================================================================
+// ✅ AUTHENTICATED ROUTES (Available to ALL authenticated users)
+// ============================================================================
+Route::middleware(['auth', 'verified'])->group(function () {
     
     // ============================================================================
     // ✅ NOTIFICATION ROUTES
     // ============================================================================
     
-    // 🔹 Web Route - Full notifications page (Inertia)
+    // Web Route - Full notifications page
     Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.index');
     
-    // 🔹 API Routes - AJAX calls from NotificationCenter component
+    // API Routes - AJAX calls
     Route::prefix('api')->name('api.')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
         Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     });
     
-    // ✅ Profile Check API Routes
+    // Profile Check API Routes
     Route::prefix('api/profile')->name('api.profile.')->group(function () {
         Route::get('/check', function () {
             $profileService = app(\App\Services\ProfileService::class);
@@ -121,7 +145,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/', [ProfileController::class, 'update'])->name('update');
         Route::delete('/', [ProfileController::class, 'destroy'])->name('destroy');
         
-        // ✅ NEW: Barangay Profile Management
+        // Barangay Profile Management
         Route::prefix('barangay')->name('barangay.')->group(function () {
             Route::get('/', [DocumentRequestController::class, 'showProfile'])->name('show');
             Route::post('/update', [DocumentRequestController::class, 'updateProfile'])->name('update');
@@ -204,7 +228,7 @@ Route::middleware('auth')->group(function () {
     })->name('prototype');
 
     // ============================================================================
-    // ✅ JOBS
+    // ✅ JOBS (View jobs - available to all)
     // ============================================================================
     Route::get('/jobs', [JobPostingController::class, 'index'])->name('jobs.index');
 
@@ -244,47 +268,73 @@ Route::middleware('auth')->group(function () {
     Route::post('/marketplace/{id}/review', [MarketplaceController::class, 'submitReview'])->name('marketplace.review');
 
     // ============================================================================
-    // ✅ RESTRICTED ROUTES (Business Owners Only)
+    // ✅ BUSINESS REGISTRATION (For users who want to become business owners)
     // ============================================================================
-    Route::middleware('business')->group(function () {
-        Route::get('/jobs/create', [JobPostingController::class, 'create'])->name('jobs.create');
-        Route::post('/jobs', [JobPostingController::class, 'store'])->name('jobs.store');
-    });
-
-    // ============================================================================
-    // ✅ PUBLIC VERIFICATION ROUTE
-    // ============================================================================
-    Route::get('/documents/verify/{id}', function ($id) {
-        $document = DocumentRequest::with('user')->findOrFail($id);
-        
-        if($document->status !== 'completed') {
-            abort(404, 'Document not valid or not yet issued.');
-        }
-
-        return Inertia::render('Documents/Verify', [
-            'document' => $document,
-        ]);
-    })->name('documents.verify');
-
-    // ============================================================================
-    // ✅ BUSINESS INCUBATION MODULE
-    // ============================================================================
-    
-    // 🔹 Registration Portal
     Route::middleware('can.register.business')->group(function () {
         Route::get('/business/register', [BusinessRegistrationController::class, 'create'])->name('business.register');
         Route::post('/business/register', [BusinessRegistrationController::class, 'store'])->name('business.store');
     });
-
-    // 🔹 Business Owner Dashboard & Management
-    Route::middleware('has.business')->prefix('business')->name('business.')->group(function () {
-        Route::get('/dashboard', [BusinessDashboardController::class, 'index'])->name('dashboard');
-        Route::patch('/status', [BusinessDashboardController::class, 'updateStatus'])->name('update-status');
-        Route::patch('/update', [BusinessDashboardController::class, 'update'])->name('update');
+});
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    
+    // Document management routes
+    Route::prefix('documents')->name('documents.')->group(function () {
+        // List all documents
+        Route::get('/', [AdminDocumentController::class, 'index'])->name('index');
         
-        Route::resource('products', ProductController::class);
-        Route::patch('/products/{product}/toggle', [ProductController::class, 'toggleAvailability'])->name('products.toggle');
+        // Show single document with details
+        Route::get('/{id}', [AdminDocumentController::class, 'show'])->name('show');
+        
+        // Update document status
+        Route::put('/{id}', [AdminDocumentController::class, 'update'])->name('update');
+        
+        // Approve document with signature
+        Route::post('/{id}/approve', [AdminDocumentController::class, 'approve'])->name('approve');
+        
+        // Reject document
+        Route::post('/{id}/reject', [AdminDocumentController::class, 'reject'])->name('reject');
+        
+        // Download attachment
+        Route::get('/{id}/attachment/download', [AdminDocumentController::class, 'downloadAttachment'])->name('download-attachment');
     });
 });
+
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    
+    // Document management routes
+    Route::prefix('documents')->name('documents.')->group(function () {
+        // List all documents
+        Route::get('/', [AdminDocumentController::class, 'index'])->name('index');
+        
+        // Show single document with details
+        Route::get('/{id}', [AdminDocumentController::class, 'show'])->name('show');
+        
+        // Update document status
+        Route::put('/{id}', [AdminDocumentController::class, 'update'])->name('update');
+        
+        // Approve document with signature
+        Route::post('/{id}/approve', [AdminDocumentController::class, 'approve'])->name('approve');
+        
+        // Reject document
+        Route::post('/{id}/reject', [AdminDocumentController::class, 'reject'])->name('reject');
+        
+        // Download attachment
+        Route::get('/{id}/attachment/download', [AdminDocumentController::class, 'downloadAttachment'])->name('download-attachment');
+    });
+});
+// ============================================================================
+// ✅ PUBLIC VERIFICATION ROUTE (No auth required)
+// ============================================================================
+Route::get('/documents/verify/{id}', function ($id) {
+    $document = DocumentRequest::with('user')->findOrFail($id);
+    
+    if($document->status !== 'completed') {
+        abort(404, 'Document not valid or not yet issued.');
+    }
+
+    return Inertia::render('Documents/Verify', [
+        'document' => $document,
+    ]);
+})->name('documents.verify');
 
 require __DIR__.'/auth.php';

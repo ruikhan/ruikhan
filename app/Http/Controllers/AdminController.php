@@ -6,88 +6,112 @@ use App\Models\DocumentRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
     public function index()
     {
-        // --- 1. Calculate Real Stats ---
-        // Assuming 150 PHP revenue per completed doc.
-        $completedCount = DocumentRequest::where('status', 'completed')->count();
-        $stats = [
-            'revenue' => $completedCount * 150, 
-            'citizens' => User::where('role', '!=', 'admin')->count(),
+        try {
+            // Get pending tasks
+            $pendingTasks = DocumentRequest::with('user:id,name,email')
+                ->whereIn('status', ['pending', 'processing'])
+                ->latest()
+                ->limit(20)
+                ->get()
+                ->map(function ($request) {
+                    return [
+                        'id' => $request->id,
+                        'user' => $request->user?->name ?? 'Unknown',
+                        'detail' => $request->document_type ?? 'Document Request',
+                        'type' => $request->document_type ?? 'N/A',
+                        'status' => $request->status === 'pending' ? 'urgent' : 'normal',
+                        'time' => $request->created_at->diffForHumans(),
+                    ];
+                });
+
+            // Get recent activity
+            $recentActivity = DocumentRequest::with('user:id,name,email')
+                ->latest()
+                ->limit(10)
+                ->get()
+                ->map(function ($request) {
+                    return [
+                        'id' => $request->id,
+                        'user' => $request->user?->name ?? 'Unknown',
+                        'action' => $this->getActionText($request->status),
+                        'time' => $request->updated_at->diffForHumans(),
+                    ];
+                });
+
+            // Get stats
+            $stats = [
+                'revenue' => DocumentRequest::whereDate('created_at', today())
+                    ->count() * 50, // Assuming ₱50 per document
+                'citizens' => User::whereDate('created_at', today())->count(),
+            ];
+
+            // Get department load
+            $departmentLoad = [
+                [
+                    'name' => 'Civil Registry',
+                    'count' => DocumentRequest::where('department', 'civil_registry')
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->count(),
+                    'capacity' => 50,
+                    'color' => 'bg-gradient-to-r from-blue-500 to-blue-600',
+                ],
+                [
+                    'name' => 'Treasury',
+                    'count' => DocumentRequest::where('department', 'treasury')
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->count(),
+                    'capacity' => 30,
+                    'color' => 'bg-gradient-to-r from-emerald-500 to-emerald-600',
+                ],
+                [
+                    'name' => 'Engineering',
+                    'count' => DocumentRequest::where('department', 'engineering')
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->count(),
+                    'capacity' => 40,
+                    'color' => 'bg-gradient-to-r from-purple-500 to-purple-600',
+                ],
+            ];
+
+            return Inertia::render('Admin/Dashboard', [
+                'stats' => $stats,
+                'recentActivity' => $recentActivity,
+                'pendingTasks' => $pendingTasks,
+                'departmentLoad' => $departmentLoad,
+            ]);
+
+        } catch (\Exception $e) {
+            // Log the error
+            Log::error('Admin Dashboard Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Return safe defaults
+            return Inertia::render('Admin/Dashboard', [
+                'stats' => ['revenue' => 0, 'citizens' => 0],
+                'recentActivity' => [],
+                'pendingTasks' => [],
+                'departmentLoad' => [],
+            ])->with('error', 'Failed to load dashboard data. Please refresh the page.');
+        }
+    }
+
+    private function getActionText($status)
+    {
+        $actions = [
+            'pending' => 'submitted a document request',
+            'processing' => 'request is being processed',
+            'ready_for_pickup' => 'request is ready for pickup',
+            'completed' => 'completed their request',
         ];
 
-        // --- 2. Fetch Pending Tasks (The "Priority Queue") ---
-        $pendingTasks = DocumentRequest::with('user')
-            ->where('status', 'pending')
-            ->latest()
-            ->take(5)
-            ->get()
-            ->map(function ($doc) {
-                return [
-                    'id' => $doc->id,
-                    'type' => Str::title(str_replace('_', ' ', $doc->document_type)),
-                    // ✅ FIX: Check if user exists before accessing name
-                    'user' => $doc->user ? $doc->user->name : 'Unknown User', 
-                    'detail' => Str::limit($doc->purpose, 30),
-                    'status' => 'normal',
-                    'time' => $doc->created_at->diffForHumans(),
-                ];
-            });
-
-        // --- 3. Calculate Department Load ---
-        $activeDocs = DocumentRequest::where('status', '!=', 'completed')->get();
-        
-        $departmentLoad = [
-            [
-                'name' => 'Civil Registry',
-                'count' => $activeDocs->whereIn('document_type', ['birth_certificate', 'marriage_certificate', 'death_certificate'])->count(),
-                'capacity' => 80,
-                'color' => 'bg-blue-500'
-            ],
-            [
-                'name' => 'Health Office',
-                'count' => $activeDocs->where('document_type', 'health_certificate')->count(),
-                'capacity' => 100,
-                'color' => 'bg-red-500'
-            ],
-            [
-                'name' => 'Social Welfare',
-                'count' => $activeDocs->where('document_type', 'indigency')->count(),
-                'capacity' => 70,
-                'color' => 'bg-yellow-500'
-            ],
-            [
-                'name' => 'Engineering',
-                'count' => $activeDocs->whereIn('document_type', ['building_permit', 'business_permit'])->count(),
-                'capacity' => 50,
-                'color' => 'bg-green-500'
-            ],
-        ];
-
-        // --- 4. Recent Activity Log ---
-        $recentActivity = DocumentRequest::with('user')
-            ->orderBy('updated_at', 'desc')
-            ->take(6)
-            ->get()
-            ->map(function ($doc) {
-                return [
-                    'id' => $doc->id,
-                    // ✅ FIX: Check if user exists here too
-                    'user' => $doc->user ? $doc->user->name : 'Deleted User',
-                    'action' => 'status updated to ' . strtoupper($doc->status),
-                    'time' => $doc->updated_at->format('h:i A'),
-                ];
-            });
-
-        return Inertia::render('Dashboard', [
-            'stats' => $stats,
-            'pendingTasks' => $pendingTasks,
-            'departmentLoad' => $departmentLoad,
-            'recentActivity' => $recentActivity
-        ]);
+        return $actions[$status] ?? 'updated their request';
     }
 }
