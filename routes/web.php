@@ -48,7 +48,9 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
-
+    Route::get('/bpo-coach', function () {
+        return Inertia::render('BPOCoach');
+    })->name('bpo.coach');
 // ============================================================================
 // ✅ ROLE-BASED DASHBOARDS (Must be before generic /dashboard)
 // ============================================================================
@@ -182,7 +184,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // ============================================================================
     Route::get('/system-documentation', function () { return Inertia::render('System/SystemVisualization'); })->name('system.docs');
     Route::get('/system-architecture', function () { return Inertia::render('Documentation/SystemArchitecture'); })->name('system.architecture');
-    Route::get('/project-blueprint', function () { return Inertia::render('Documentation/ProjectBlueprint'); })->name('project.blueprint');
 
     // ============================================================================
     // ✅ MARKET PRICES
@@ -249,6 +250,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/social-services', [SocialServiceController::class, 'index'])->name('social.index');
     Route::post('/social-services/apply', [SocialServiceController::class, 'store'])->name('social.store');
 
+
+// Add this rout
+
     // ============================================================================
     // ✅ BILLS & PAYMENTS
     // ============================================================================
@@ -275,53 +279,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/business/register', [BusinessRegistrationController::class, 'store'])->name('business.store');
     });
 });
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-    
-    // Document management routes
-    Route::prefix('documents')->name('documents.')->group(function () {
-        // List all documents
-        Route::get('/', [AdminDocumentController::class, 'index'])->name('index');
-        
-        // Show single document with details
-        Route::get('/{id}', [AdminDocumentController::class, 'show'])->name('show');
-        
-        // Update document status
-        Route::put('/{id}', [AdminDocumentController::class, 'update'])->name('update');
-        
-        // Approve document with signature
-        Route::post('/{id}/approve', [AdminDocumentController::class, 'approve'])->name('approve');
-        
-        // Reject document
-        Route::post('/{id}/reject', [AdminDocumentController::class, 'reject'])->name('reject');
-        
-        // Download attachment
-        Route::get('/{id}/attachment/download', [AdminDocumentController::class, 'downloadAttachment'])->name('download-attachment');
-    });
-});
 
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-    
-    // Document management routes
-    Route::prefix('documents')->name('documents.')->group(function () {
-        // List all documents
-        Route::get('/', [AdminDocumentController::class, 'index'])->name('index');
-        
-        // Show single document with details
-        Route::get('/{id}', [AdminDocumentController::class, 'show'])->name('show');
-        
-        // Update document status
-        Route::put('/{id}', [AdminDocumentController::class, 'update'])->name('update');
-        
-        // Approve document with signature
-        Route::post('/{id}/approve', [AdminDocumentController::class, 'approve'])->name('approve');
-        
-        // Reject document
-        Route::post('/{id}/reject', [AdminDocumentController::class, 'reject'])->name('reject');
-        
-        // Download attachment
-        Route::get('/{id}/attachment/download', [AdminDocumentController::class, 'downloadAttachment'])->name('download-attachment');
-    });
-});
 // ============================================================================
 // ✅ PUBLIC VERIFICATION ROUTE (No auth required)
 // ============================================================================
