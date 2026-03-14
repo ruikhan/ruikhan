@@ -472,7 +472,7 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                                     <div class="action-card-icon">👔</div>
                                     <span class="action-card-text">HR Portal</span>
                                 </div>
-                                <a :href="route('documents.verify')" class="action-card from-cyan-600/30 to-blue-600/30 border-cyan-500/50 col-span-2">
+                                <a href="/documents/verify" class="action-card from-cyan-600/30 to-blue-600/30 border-cyan-500/50 col-span-2">
                                     <div class="flex items-center justify-center gap-3">
                                         <span class="text-2xl">🔗</span>
                                         <div class="text-left">
