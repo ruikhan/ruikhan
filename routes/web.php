@@ -279,7 +279,53 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/business/register', [BusinessRegistrationController::class, 'store'])->name('business.store');
     });
 });
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    
+    // Document management routes
+    Route::prefix('documents')->name('documents.')->group(function () {
+        // List all documents
+        Route::get('/', [AdminDocumentController::class, 'index'])->name('index');
+        
+        // Show single document with details
+        Route::get('/{id}', [AdminDocumentController::class, 'show'])->name('show');
+        
+        // Update document status
+        Route::put('/{id}', [AdminDocumentController::class, 'update'])->name('update');
+        
+        // Approve document with signature
+        Route::post('/{id}/approve', [AdminDocumentController::class, 'approve'])->name('approve');
+        
+        // Reject document
+        Route::post('/{id}/reject', [AdminDocumentController::class, 'reject'])->name('reject');
+        
+        // Download attachment
+        Route::get('/{id}/attachment/download', [AdminDocumentController::class, 'downloadAttachment'])->name('download-attachment');
+    });
+});
 
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    
+    // Document management routes
+    Route::prefix('documents')->name('documents.')->group(function () {
+        // List all documents
+        Route::get('/', [AdminDocumentController::class, 'index'])->name('index');
+        
+        // Show single document with details
+        Route::get('/{id}', [AdminDocumentController::class, 'show'])->name('show');
+        
+        // Update document status
+        Route::put('/{id}', [AdminDocumentController::class, 'update'])->name('update');
+        
+        // Approve document with signature
+        Route::post('/{id}/approve', [AdminDocumentController::class, 'approve'])->name('approve');
+        
+        // Reject document
+        Route::post('/{id}/reject', [AdminDocumentController::class, 'reject'])->name('reject');
+        
+        // Download attachment
+        Route::get('/{id}/attachment/download', [AdminDocumentController::class, 'downloadAttachment'])->name('download-attachment');
+    });
+});
 // ============================================================================
 // ✅ PUBLIC VERIFICATION ROUTE (No auth required)
 // ============================================================================
@@ -294,5 +340,33 @@ Route::get('/documents/verify/{id}', function ($id) {
         'document' => $document,
     ]);
 })->name('documents.verify');
+
+
+// ============================================================================
+// ✅ ADMIN WORKFLOW ROUTES (Social Aid, Health, Environment)
+// ============================================================================
+Route::middleware(['auth', 'verified', App\Http\Middleware\AdminMiddleware::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+
+    // Social Aid
+    Route::get('/social-aid', [App\Http\Controllers\AdminController::class, 'socialAidIndex'])
+        ->name('social-aid.index');
+    Route::get('/social-aid/{id}', [App\Http\Controllers\AdminController::class, 'socialAidShow'])
+        ->name('social-aid.show');
+
+    // Health
+    Route::get('/health', [App\Http\Controllers\AdminController::class, 'healthIndex'])
+        ->name('health.index');
+    Route::get('/health/{id}', [App\Http\Controllers\AdminController::class, 'healthShow'])
+        ->name('health.show');
+
+    // Environment
+    Route::get('/environment', [App\Http\Controllers\AdminController::class, 'environmentIndex'])
+        ->name('environment.index');
+    Route::get('/environment/{id}', [App\Http\Controllers\AdminController::class, 'environmentShow'])
+        ->name('environment.show');
+});
 
 require __DIR__.'/auth.php';
