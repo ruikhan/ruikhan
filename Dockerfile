@@ -20,6 +20,11 @@ RUN apt-get update && apt-get install -y \
         php8.2-intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Download Aiven CA certificate bundle (required for SSL connection)
+RUN curl -sSL https://raw.githubusercontent.com/aiven/aiven-docs/main/static/certs/ca.pem \
+    -o /etc/ssl/certs/aiven-ca.pem \
+    || cp /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/aiven-ca.pem
+
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -39,19 +44,15 @@ COPY . .
 # Run composer post-install scripts
 RUN composer dump-autoload --optimize --no-interaction
 
-# Build Vite assets (Ziggy vendor now exists)
+# Build Vite assets
 RUN npm run build
-
-# ⚠️  DO NOT run config:cache/route:cache here — it would bake .env values
-#     into the image and ignore Render's environment variables at runtime.
-#     These are run at startup instead (see CMD below).
 
 # Permissions
 RUN chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8080
 
-# At startup: cache uses LIVE env vars from Render, then migrate and serve
+# At startup: use live Render env vars for all caching, then migrate and serve
 CMD php8.2 artisan config:cache \
     && php8.2 artisan route:cache \
     && php8.2 artisan view:cache \
