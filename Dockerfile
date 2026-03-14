@@ -1,10 +1,13 @@
-# Use Node 20 as base, then add PHP on top
 FROM node:20-bullseye-slim
 
-# Install PHP 8.2 and required extensions
+# Install PHP 8.2 + extensions
 RUN apt-get update && apt-get install -y \
-    lsb-release ca-certificates apt-transport-https software-properties-common curl git zip unzip \
-    && curl -sSL https://packages.sury.org/php/README.txt | bash -x \
+    lsb-release ca-certificates apt-transport-https \
+    software-properties-common curl git zip unzip \
+    && curl -sSLo /usr/share/keyrings/deb.sury.org-php.gpg \
+       https://packages.sury.org/php/apt.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" \
+       > /etc/apt/sources.list.d/php.list \
     && apt-get update && apt-get install -y \
         php8.2-cli \
         php8.2-mysql \
@@ -14,8 +17,7 @@ RUN apt-get update && apt-get install -y \
         php8.2-zip \
         php8.2-bcmath \
         php8.2-gd \
-        php8.2-fileinfo \
-        php8.2-tokenizer \
+        php8.2-intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
@@ -23,28 +25,24 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Copy composer files first (better layer caching)
+# Install PHP deps first (Ziggy needs to exist before npm build)
 COPY composer.json composer.lock ./
-
-# Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-# Copy package files
+# Install Node deps
 COPY package.json package-lock.json ./
-
-# Install Node dependencies
 RUN npm ci
 
-# Copy everything else
+# Copy all source files
 COPY . .
 
-# Run composer scripts now all files are present
+# Run composer post-install scripts
 RUN composer dump-autoload --optimize --no-interaction
 
-# Build frontend assets (Ziggy vendor folder now exists)
+# Build Vite assets (Ziggy vendor now exists)
 RUN npm run build
 
-# Cache Laravel
+# Cache Laravel routes/views/config
 RUN php8.2 artisan config:cache \
     && php8.2 artisan route:cache \
     && php8.2 artisan view:cache
@@ -54,4 +52,7 @@ RUN chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8080
 
-CMD php8.2 artisan migrate --force && php8.2 artisan storage:link --force && php8.2 -S 0.0.0.0:$PORT -t public
+# Start: migrate then serve
+CMD php8.2 artisan migrate --force \
+    && php8.2 artisan storage:link --force \
+    && php8.2 -S 0.0.0.0:$PORT -t public
