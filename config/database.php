@@ -58,11 +58,11 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                // Aiven requires SSL but we skip CA verification (still encrypted)
-                PDO::MYSQL_ATTR_SSL_CA                 => env('MYSQL_ATTR_SSL_CA', ''),
+            'options' => extension_loaded('pdo_mysql') ? [
+                // Aiven requires SSL — connection is encrypted but cert not verified
+                // (cert verification requires Aiven's specific CA bundle)
                 PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
-            ]) : [],
+            ] : [],
         ],
 
         'pgsql' => [
