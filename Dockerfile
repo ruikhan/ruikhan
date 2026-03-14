@@ -42,17 +42,19 @@ RUN composer dump-autoload --optimize --no-interaction
 # Build Vite assets (Ziggy vendor now exists)
 RUN npm run build
 
-# Cache Laravel routes/views/config
-RUN php8.2 artisan config:cache \
-    && php8.2 artisan route:cache \
-    && php8.2 artisan view:cache
+# ⚠️  DO NOT run config:cache/route:cache here — it would bake .env values
+#     into the image and ignore Render's environment variables at runtime.
+#     These are run at startup instead (see CMD below).
 
 # Permissions
 RUN chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8080
 
-# Start: migrate then serve
-CMD php8.2 artisan migrate --force \
+# At startup: cache uses LIVE env vars from Render, then migrate and serve
+CMD php8.2 artisan config:cache \
+    && php8.2 artisan route:cache \
+    && php8.2 artisan view:cache \
+    && php8.2 artisan migrate --force \
     && php8.2 artisan storage:link --force \
     && php8.2 -S 0.0.0.0:$PORT -t public
