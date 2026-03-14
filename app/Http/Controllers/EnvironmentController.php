@@ -50,7 +50,37 @@ public function index()
 
     public function store(Request $request)
     {
-        // Save hazard report logic here
-        return redirect()->back();
+        $validated = $request->validate([
+            'report_type'  => 'required|string',
+            'severity'     => 'required|in:low,moderate,high,critical',
+            'location'     => 'required|string|max:255',
+            'latitude'     => 'nullable|numeric',
+            'longitude'    => 'nullable|numeric',
+            'report_data'  => 'required|array',
+            'attachments'  => 'nullable|array',
+            'attachments.*'=> 'nullable|file|mimes:jpg,jpeg,png,mp4|max:10240',
+        ]);
+
+        $attachmentPaths = [];
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $attachmentPaths[] = $file->store('environment-reports', 'public');
+            }
+        }
+
+        \App\Models\EnvironmentReport::create([
+            'user_id'     => auth()->id(),
+            'report_type' => $validated['report_type'],
+            'severity'    => $validated['severity'],
+            'location'    => $validated['location'],
+            'latitude'    => $validated['latitude'] ?? null,
+            'longitude'   => $validated['longitude'] ?? null,
+            'report_data' => $validated['report_data'],
+            'attachments' => $attachmentPaths ?: null,
+            'status'      => 'pending',
+        ]);
+
+        return redirect()->back()
+            ->with('success', '✅ Report submitted! Our environment team will review it shortly.');
     }
 }

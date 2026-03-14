@@ -4,6 +4,7 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NotificationCenter from '@/Components/NotificationCenter.vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import axios from 'axios';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const showingNavigationDropdown = ref(false);
@@ -156,6 +157,34 @@ const sidebarItems = [
 
 const handleNavClick = (item) => {
     if (item.action === 'sidebar') showingSidebar.value = true;
+};
+
+// ── Logout — native form submit (most reliable, bypasses all JS CSRF complexity) ──
+const isLoggingOut = ref(false);
+
+const handleLogout = async () => {
+    if (isLoggingOut.value) return;
+    isLoggingOut.value = true;
+    showingSidebar.value = false;
+
+    // Refresh the XSRF-TOKEN cookie first so the form _token is fresh
+    try { await axios.get('/sanctum/csrf-cookie'); } catch { /* continue */ }
+
+    // Submit as a real HTML form — Laravel always accepts _token in the body
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = route('logout');
+    form.style.display = 'none';
+
+    const tokenInput = document.createElement('input');
+    tokenInput.type  = 'hidden';
+    tokenInput.name  = '_token';
+    // Use the raw token from the meta tag — valid for the entire session lifetime
+    tokenInput.value = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    form.appendChild(tokenInput);
+
+    document.body.appendChild(form);
+    form.submit(); // Browser handles the redirect after logout
 };
 </script>
 
@@ -375,10 +404,10 @@ const handleNavClick = (item) => {
                                 <div class="dropdown-divider"></div>
 
                                 <div class="dropdown-footer">
-                                    <DropdownLink :href="route('logout')" method="post" as="button" class="dropdown-link dropdown-link-danger">
+                                    <button @click="handleLogout" :disabled="isLoggingOut" class="dropdown-link dropdown-link-danger w-full">
                                         <span>🚪</span>
-                                        <span>Logout</span>
-                                    </DropdownLink>
+                                        <span>{{ isLoggingOut ? 'Logging out…' : 'Logout' }}</span>
+                                    </button>
                                 </div>
                             </div>
                         </template>
@@ -452,10 +481,10 @@ const handleNavClick = (item) => {
                         <span>⚙️</span>
                         <span>Settings</span>
                     </Link>
-                    <Link :href="route('logout')" method="post" as="button" @click="showingSidebar = false" class="sidebar-footer-btn sidebar-footer-btn-danger">
+                    <button @click="handleLogout" :disabled="isLoggingOut" class="sidebar-footer-btn sidebar-footer-btn-danger">
                         <span>🚪</span>
-                        <span>Logout</span>
-                    </Link>
+                        <span>{{ isLoggingOut ? 'Logging out…' : 'Logout' }}</span>
+                    </button>
                 </div>
             </div>
         </Transition>

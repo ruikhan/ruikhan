@@ -1,0 +1,92 @@
+# render.yaml — Infrastructure as Code for Render.com
+# Commit this file to your repo root. Render reads it automatically.
+
+databases:
+  - name: epili-db
+    databaseName: epili
+    user: epili
+    plan: free          # upgrade to starter ($7/mo) for production persistence
+
+services:
+  # ── Main web application ────────────────────────────────────────────────────
+  - type: web
+    name: epili-app
+    runtime: nixpacks      # uses nixpacks.toml in repo root
+    plan: free             # upgrade to starter for persistent disk
+    buildCommand: ""       # nixpacks.toml handles this
+    startCommand: php artisan migrate --force && php artisan storage:link --force && php -S 0.0.0.0:$PORT -t public
+    healthCheckPath: /
+    autoDeploy: true       # auto-deploy on every push to main branch
+
+    disk:
+      name: epili-storage
+      mountPath: /var/task/storage
+      sizeGB: 1            # persistent uploads/logs (requires paid plan)
+
+    envVars:
+      # ── App ──
+      - key: APP_NAME
+        value: ENOT-PILI
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true    # Render auto-generates a secure key
+      - key: APP_URL
+        value: https://epili-app.onrender.com   # ← change to your actual URL
+
+      # ── Database (auto-injected from the database above) ──
+      - key: DB_CONNECTION
+        value: pgsql           # Render's free DB is PostgreSQL
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epili-db
+          property: connectionString
+
+      # ── Session & Cache ──
+      - key: SESSION_DRIVER
+        value: database        # file driver breaks on ephemeral filesystems
+      - key: SESSION_LIFETIME
+        value: 480
+      - key: SESSION_SECURE_COOKIE
+        value: true            # always true on HTTPS
+      - key: SESSION_DOMAIN
+        value:                 # leave empty — cookie binds to request host
+      - key: SANCTUM_STATEFUL_DOMAINS
+        value: epili-app.onrender.com   # ← change to your domain(s)
+      - key: CACHE_DRIVER
+        value: database
+
+      # ── Queue ──
+      - key: QUEUE_CONNECTION
+        value: database
+
+      # ── Filesystem ──
+      - key: FILESYSTEM_DISK
+        value: public
+
+      # ── Logging ──
+      - key: LOG_CHANNEL
+        value: stderr          # Render captures stderr → visible in dashboard logs
+      - key: LOG_LEVEL
+        value: error
+
+      # ── Blockchain (existing) ──
+      - key: BLOCKCHAIN_BRIDGE_URL
+        value: http://localhost:3001
+      - key: BLOCKCHAIN_API_SECRET
+        sync: false            # mark as secret — set manually in Render dashboard
+      - key: BLOCKCHAIN_CONTRACT_ADDRESS
+        value: 0xc65bB3D1ddE97EAC0a6fd7Ba6FD7C1fb4eBC54d5
+      - key: BLOCKCHAIN_NETWORK
+        value: polygon-amoy
+
+  # ── Queue worker (handles jobs dispatched by the app) ──────────────────────
+  - type: worker
+    name: epili-queue
+    runtime: nixpacks
+    plan: free
+    startCommand: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    envVars:
+      - fromGroup: epili-env   # share the same env vars as the web service

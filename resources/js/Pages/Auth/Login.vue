@@ -13,21 +13,90 @@ const form = useForm({
     remember: false,
 });
 
-const submit = () => {
+// ── CSRF helpers ──────────────────────────────────────────────────────────────
+
+/**
+ * Get the ENCRYPTED cookie value (correct input for X-XSRF-TOKEN).
+ * Do NOT use this for X-CSRF-TOKEN — different format.
+ */
+const getXsrfCookie = () => {
+    try {
+        const row = document.cookie.split('; ').find(r => r.startsWith('XSRF-TOKEN='));
+        return row ? decodeURIComponent(row.split('=')[1]) : null;
+    } catch { return null; }
+};
+
+/**
+ * Refresh the session. After this, the XSRF-TOKEN cookie is fresh.
+ * Inertia will pick it up via the X-XSRF-TOKEN header set in router.on('before').
+ * Do NOT update the <meta> tag from the cookie — they hold different values.
+ */
+const refreshCsrf = async () => {
+    // Use the global refreshCsrf if available (from app.js), otherwise call directly
+    if (window.__refreshCsrf) {
+        await window.__refreshCsrf();
+    } else {
+        await fetch('/sanctum/csrf-cookie', {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+        });
+    }
+};
+
+// ── Form submit ───────────────────────────────────────────────────────────────
+
+let _retried = false;
+
+const submit = async () => {
+    // Ensure a fresh cookie before every login attempt
+    await refreshCsrf();
+    _retried = false;
+
     form.post(route('login'), {
-        onFinish: () => form.reset('password'),
+        onFinish: () => {
+            form.reset('password');
+            _retried = false;
+        },
+        onError: async (errors) => {
+            // Detect a 419 surface from Inertia (shows as empty error object
+            // or a message containing "419" or "CSRF")
+            const keys = Object.keys(errors);
+            const is419 = keys.length === 0
+                || errors?.message?.includes('419')
+                || errors?.message?.toLowerCase().includes('csrf');
+
+            if (is419 && !_retried) {
+                _retried = true;
+                console.warn('⚠️ 419 on login — refreshing and retrying once…');
+                await refreshCsrf();
+
+                // Small tick to ensure the browser has the new cookie before posting
+                await new Promise(r => setTimeout(r, 50));
+                submit();
+            }
+        },
     });
 };
 
-// Enhanced interaction states
-const mouseX = ref(0);
-const mouseY = ref(0);
-const showPassword = ref(false);
-const emailFocused = ref(false);
-const passwordFocused = ref(false);
-const isInitialLoad = ref(true);
+// ── Visibility-change (user returns after leaving tab open) ───────────────────
+let lastVisible = Date.now();
 
-// Optimized mouse tracking with RAF
+const handleVisibilityChange = async () => {
+    if (document.hidden) { lastVisible = Date.now(); return; }
+    if (Date.now() - lastVisible > 2 * 60 * 1000) {
+        await refreshCsrf();
+    }
+};
+
+// ── Visual / interaction state (unchanged from original) ─────────────────────
+
+const mouseX           = ref(0);
+const mouseY           = ref(0);
+const showPassword     = ref(false);
+const emailFocused     = ref(false);
+const passwordFocused  = ref(false);
+const isInitialLoad    = ref(true);
+
 let mouseRAF = null;
 const handleMouseMove = (e) => {
     if (mouseRAF) return;
@@ -38,42 +107,38 @@ const handleMouseMove = (e) => {
     });
 };
 
-// Audio feedback
 const audioContext = ref(null);
 const playSound = (frequency, duration = 0.08) => {
     try {
-        if (!audioContext.value) {
+        if (!audioContext.value)
             audioContext.value = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        const ctx = audioContext.value;
+        const ctx        = audioContext.value;
         const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        
+        const gainNode   = ctx.createGain();
         oscillator.connect(gainNode);
         gainNode.connect(ctx.destination);
-        
         oscillator.frequency.value = frequency;
         oscillator.type = 'sine';
-        
         gainNode.gain.setValueAtTime(0.02, ctx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-        
         oscillator.start(ctx.currentTime);
         oscillator.stop(ctx.currentTime + duration);
-    } catch (e) {
-        // Silent fail
-    }
+    } catch { /* silent fail */ }
 };
 
-onMounted(() => {
+onMounted(async () => {
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    setTimeout(() => {
-        isInitialLoad.value = false;
-    }, 100);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    setTimeout(() => { isInitialLoad.value = false; }, 100);
+
+    // Pre-warm a fresh cookie on page load
+    await refreshCsrf();
+    console.log('✅ CSRF token initialized');
 });
 
 onUnmounted(() => {
     window.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
     if (mouseRAF) cancelAnimationFrame(mouseRAF);
 });
 </script>

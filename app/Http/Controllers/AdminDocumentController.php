@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\DocumentRequest;
+use App\Jobs\AnchorDocumentJob;
+use App\Services\BlockchainService;
+use App\Notifications\DocumentStatusUpdated;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -12,96 +15,99 @@ class AdminDocumentController extends Controller
 {
     /**
      * Display all document requests
+     * ✅ FIX: ->through() instead of ->map() on paginator
      */
-    public function index()
-    {
-        try {
-            $requests = DocumentRequest::with('user:id,name,email')
-                ->latest()
-                ->paginate(15)
-                ->map(function ($request) {
-                    return [
-                        'id' => $request->id,
-                        'user' => [
-                            'name' => $request->user?->name ?? 'Unknown User',
-                            'email' => $request->user?->email ?? 'No Email',
-                        ],
-                        'document_type' => $request->document_type ?? 'N/A',
-                        'purpose' => $request->purpose ?? 'No purpose specified',
-                        'status' => $request->status ?? 'pending',
-                        'created_at' => $request->created_at?->toISOString() ?? null,
-                        'updated_at' => $request->updated_at?->toISOString() ?? null,
-                    ];
-                });
 
-            return Inertia::render('Admin/Documents/Index', [
-                'requests' => $requests,
-            ]);
+// In AdminDocumentController::index()
+// ✅ FIX: paginate() returns LengthAwarePaginator — Vue reads .data, .links, .meta
+// Replace the current index() method with this:
 
-        } catch (\Exception $e) {
-            Log::error('Admin Documents Index Error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
+public function index()
+{
+    try {
+        $requests = DocumentRequest::with('user:id,name,email')
+            ->latest()
+            ->paginate(15)
+            ->through(function ($request) {
+                return [
+                    'id'                      => $request->id,
+                    'tracking_code'           => $request->tracking_code ?? 'N/A',
+                    'user' => [
+                        'name'  => $request->user?->name ?? 'Unknown User',
+                        'email' => $request->user?->email ?? 'No Email',
+                    ],
+                    'document_type'           => $request->document_type ?? 'N/A',
+                    'department'              => $request->department ?? 'N/A',
+                    'status'                  => $request->status ?? 'pending',
+                    'blockchain_status'       => $request->blockchain_status,
+                    'blockchain_tx_hash'      => $request->blockchain_tx_hash,
+                    'blockchain_explorer_url' => $request->blockchain_explorer_url,
+                    'created_at'              => $request->created_at?->toISOString(),
+                    'updated_at'              => $request->updated_at?->toISOString(),
+                ];
+            });
 
-            return Inertia::render('Admin/Documents/Index', [
-                'requests' => [],
-            ])->with('error', 'Failed to load documents. Please refresh the page.');
-        }
+        return Inertia::render('Admin/Documents/Index', [
+            // ✅ Inertia automatically serializes LengthAwarePaginator to
+            // { data: [...], links: { first, last, prev, next }, meta: { current_page, last_page, total, ... } }
+            'requests' => $requests,
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Admin Documents Index Error: ' . $e->getMessage());
+
+        return Inertia::render('Admin/Documents/Index', [
+            'requests' => [ 'data' => [], 'links' => [], 'meta' => ['total' => 0, 'current_page' => 1, 'last_page' => 1] ],
+        ]);
     }
+}
 
     /**
-     * Display a specific document request with all details
+     * Display a specific document request
      */
     public function show($id)
     {
         try {
-            $documentRequest = DocumentRequest::with('user:id,name,email')
+            $documentRequest = DocumentRequest::with('user:id,name,email,phone_number,address')
                 ->findOrFail($id);
 
-            // Format attachments with proper URLs
-            $attachments = [];
-            if ($documentRequest->attachments) {
-                $attachmentPaths = is_string($documentRequest->attachments) 
-                    ? json_decode($documentRequest->attachments, true) 
-                    : (array)$documentRequest->attachments;
-                
-                $attachments = array_map(function ($path) {
-                    return [
-                        'name' => basename($path),
-                        'path' => $path,
-                        'url' => Storage::url($path),
-                        'type' => $this->getFileType($path),
-                    ];
-                }, $attachmentPaths ?? []);
+            if (!$documentRequest->user) {
+                Log::warning('Document has no associated user', ['document_id' => $id]);
+                return redirect()->route('admin.documents.index')
+                    ->withErrors(['error' => 'This document has no associated user']);
             }
 
-            $formattedRequest = [
-                'id' => $documentRequest->id,
-                'user' => [
-                    'id' => $documentRequest->user?->id,
-                    'name' => $documentRequest->user?->name ?? 'Unknown User',
-                    'email' => $documentRequest->user?->email ?? 'No Email',
-                ],
-                'document_type' => $documentRequest->document_type ?? 'N/A',
-                'purpose' => $documentRequest->purpose ?? 'No purpose specified',
-                'status' => $documentRequest->status ?? 'pending',
-                'admin_note' => $documentRequest->admin_note ?? '',
-                'attachments' => $attachments,
-                'signature' => [
-                    'admin_signature' => $documentRequest->admin_signature ?? null,
-                    'admin_signature_date' => $documentRequest->admin_signature_date ?? null,
-                    'user_signature' => $documentRequest->user_signature ?? null,
-                    'user_signature_date' => $documentRequest->user_signature_date ?? null,
-                ],
-                'workflow_history' => $documentRequest->workflow_history 
-                    ? json_decode($documentRequest->workflow_history, true) 
-                    : [],
-                'created_at' => $documentRequest->created_at?->toISOString() ?? null,
-                'updated_at' => $documentRequest->updated_at?->toISOString() ?? null,
-            ];
+            // ✅ FIX: attachments is already cast as array in model
+            $attachments = $documentRequest->attachments ?? [];
 
             return Inertia::render('Admin/Documents/Show', [
-                'request' => $formattedRequest,
+                'docRequest' => [
+                    'id'                      => $documentRequest->id,
+                    'tracking_code'           => $documentRequest->tracking_code ?? 'N/A',
+                    'document_type'           => $documentRequest->document_type ?? 'N/A',
+                    'department'              => $documentRequest->department ?? 'N/A',
+                    'status'                  => $documentRequest->status ?? 'pending',
+                    'data'                    => $documentRequest->data ?? [],
+                    'attachments'             => $attachments,
+                    'user_remarks'            => $documentRequest->user_remarks ?? null,
+                    'admin_remarks'           => $documentRequest->admin_note ?? '',
+                    'appointment_date'        => $documentRequest->appointment_date ?? null,
+                    'icon'                    => $this->getDepartmentIcon($documentRequest->department),
+                    'created_at'              => $documentRequest->created_at?->toISOString() ?? null,
+                    'updated_at'              => $documentRequest->updated_at?->toISOString() ?? null,
+                    'blockchain_status'       => $documentRequest->blockchain_status,
+                    'blockchain_tx_hash'      => $documentRequest->blockchain_tx_hash,
+                    'blockchain_anchored_at'  => $documentRequest->blockchain_anchored_at?->toISOString(),
+                    'blockchain_network'      => $documentRequest->blockchain_network,
+                    'blockchain_explorer_url' => $documentRequest->blockchain_explorer_url,
+                ],
+                'user' => [
+                    'id'           => $documentRequest->user->id,
+                    'name'         => $documentRequest->user->name ?? 'Unknown User',
+                    'email'        => $documentRequest->user->email ?? 'No Email',
+                    'phone_number' => $documentRequest->user->phone_number ?? null,
+                    'address'      => $documentRequest->user->address ?? null,
+                ],
             ]);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -112,85 +118,90 @@ class AdminDocumentController extends Controller
         } catch (\Exception $e) {
             Log::error('Admin Document Show Error: ' . $e->getMessage(), [
                 'document_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'trace'       => $e->getTraceAsString()
             ]);
-
             return redirect()->route('admin.documents.index')
-                ->withErrors(['error' => 'Failed to load document details.']);
+                ->withErrors(['error' => 'Failed to load document details: ' . $e->getMessage()]);
         }
     }
 
     /**
      * Update document status with workflow tracking
+     * ✅ FIX: Old status captured BEFORE update, workflow_history uses array cast
      */
     public function update(Request $request, $id)
     {
         try {
             $documentRequest = DocumentRequest::findOrFail($id);
-            
+
             $validated = $request->validate([
-                'status' => 'required|in:pending,processing,ready_for_pickup,completed,rejected',
-                'admin_note' => 'nullable|string|max:1000',
-                'admin_signature' => 'nullable|string',
+                'status'           => 'required|in:pending,processing,ready_for_pickup,completed,rejected',
+                'admin_remarks'    => 'nullable|string|max:1000',
+                'appointment_date' => 'nullable|date',
+                'admin_signature'  => 'nullable|string',
             ]);
 
-            // Get current workflow history
-            $workflowHistory = $documentRequest->workflow_history 
-                ? json_decode($documentRequest->workflow_history, true) 
-                : [];
+            if ($validated['status'] === 'ready_for_pickup' && empty($validated['appointment_date'])) {
+                return redirect()->back()
+                    ->withErrors(['appointment_date' => 'Appointment date is required when status is Ready for Pickup']);
+            }
 
-            // Add new workflow entry
+            // ✅ Capture OLD status BEFORE update
+            $oldStatus = $documentRequest->status;
+
+            // ✅ FIX: workflow_history is cast as array — no json_decode needed
+            $workflowHistory   = $documentRequest->workflow_history ?? [];
             $workflowHistory[] = [
-                'status' => $validated['status'],
-                'admin_id' => auth()->id(),
-                'admin_name' => auth()->user()->name,
-                'timestamp' => now()->toIso8601String(),
-                'note' => $validated['admin_note'] ?? null,
+                'status'           => $validated['status'],
+                'admin_id'         => auth()->id(),
+                'admin_name'       => auth()->user()->name,
+                'timestamp'        => now()->toIso8601String(),
+                'note'             => $validated['admin_remarks'] ?? null,
+                'appointment_date' => $validated['appointment_date'] ?? null,
             ];
 
-            // Prepare update data
             $updateData = [
-                'status' => $validated['status'],
-                'admin_note' => $validated['admin_note'] ?? null,
-                'workflow_history' => json_encode($workflowHistory),
+                'status'           => $validated['status'],
+                'admin_note'       => $validated['admin_remarks'] ?? null,
+                'appointment_date' => $validated['appointment_date'] ?? null,
+                'workflow_history' => $workflowHistory, // ✅ no json_encode needed
             ];
 
-            // Add signature if provided and status is completed
             if (!empty($validated['admin_signature']) && $validated['status'] === 'completed') {
-                $updateData['admin_signature'] = $validated['admin_signature'];
+                $updateData['admin_signature']      = $validated['admin_signature'];
                 $updateData['admin_signature_date'] = now();
             }
 
             $documentRequest->update($updateData);
 
-            return redirect()
-                ->back()
-                ->with('success', "Document status updated to '{$validated['status']}'");
+            // ✅ Notify only if status actually changed
+            if ($oldStatus !== $validated['status'] && $documentRequest->user) {
+                $documentRequest->user->notify(
+                    new DocumentStatusUpdated($documentRequest, $oldStatus)
+                );
+            }
+
+            return redirect()->back()
+                ->with('success', "Document status updated to '{$validated['status']}' successfully!");
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return redirect()
-                ->back()
-                ->withErrors(['error' => 'Document not found']);
+            return redirect()->back()->withErrors(['error' => 'Document not found']);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return redirect()
-                ->back()
-                ->withErrors($e->errors());
+            return redirect()->back()->withErrors($e->errors());
 
         } catch (\Exception $e) {
             Log::error('Admin Document Update Error: ' . $e->getMessage(), [
                 'document_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'trace'       => $e->getTraceAsString()
             ]);
-
-            return redirect()
-                ->back()
-                ->withErrors(['error' => 'Failed to update document. Please try again.']);
+            return redirect()->back()->withErrors(['error' => 'Failed to update document. Please try again.']);
         }
     }
 
     /**
-     * Handle document approval with signature
+     * Approve document with digital signature
+     * ✅ Notifies user + anchors on Polygon blockchain
      */
     public function approve(Request $request, $id)
     {
@@ -199,49 +210,58 @@ class AdminDocumentController extends Controller
 
             $validated = $request->validate([
                 'admin_signature' => 'required|string',
-                'admin_note' => 'nullable|string|max:1000',
+                'admin_note'      => 'nullable|string|max:1000',
             ]);
 
-            // Get current workflow history
-            $workflowHistory = $documentRequest->workflow_history 
-                ? json_decode($documentRequest->workflow_history, true) 
-                : [];
+            // ✅ Capture old status before update
+            $oldStatus = $documentRequest->status;
 
-            // Add approval to workflow
+            // ✅ FIX: no json_decode needed
+            $workflowHistory   = $documentRequest->workflow_history ?? [];
             $workflowHistory[] = [
-                'status' => 'approved',
-                'admin_id' => auth()->id(),
+                'status'     => 'approved',
+                'admin_id'   => auth()->id(),
                 'admin_name' => auth()->user()->name,
-                'timestamp' => now()->toIso8601String(),
-                'note' => $validated['admin_note'] ?? 'Document approved',
+                'timestamp'  => now()->toIso8601String(),
+                'note'       => $validated['admin_note'] ?? 'Document approved',
             ];
 
             $documentRequest->update([
-                'status' => 'completed',
-                'admin_signature' => $validated['admin_signature'],
+                'status'               => 'completed',
+                'admin_signature'      => $validated['admin_signature'],
                 'admin_signature_date' => now(),
-                'admin_note' => $validated['admin_note'] ?? null,
-                'workflow_history' => json_encode($workflowHistory),
+                'admin_note'           => $validated['admin_note'] ?? null,
+                'workflow_history'     => $workflowHistory, // ✅ no json_encode
             ]);
 
-            return redirect()
-                ->back()
-                ->with('success', 'Document approved successfully');
+            // ✅ Notify user document is completed
+            if ($documentRequest->user) {
+                $documentRequest->user->notify(
+                    new DocumentStatusUpdated($documentRequest, $oldStatus)
+                );
+            }
+
+            // ✅ Blockchain — anchor approved document on Polygon
+            $documentHash = app(BlockchainService::class)->buildDocumentHash($documentRequest);
+            AnchorDocumentJob::dispatch($documentRequest, $documentHash);
+            Log::info('[Approve] Blockchain anchor dispatched', [
+                'tracking_code' => $documentRequest->tracking_code
+            ]);
+
+            return redirect()->back()->with('success', 'Document approved successfully');
 
         } catch (\Exception $e) {
             Log::error('Document Approval Error: ' . $e->getMessage(), [
                 'document_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'trace'       => $e->getTraceAsString()
             ]);
-
-            return redirect()
-                ->back()
-                ->withErrors(['error' => 'Failed to approve document']);
+            return redirect()->back()->withErrors(['error' => 'Failed to approve document']);
         }
     }
 
     /**
-     * Handle document rejection
+     * Reject document with reason
+     * ✅ Notifies user of rejection
      */
     public function reject(Request $request, $id)
     {
@@ -252,60 +272,57 @@ class AdminDocumentController extends Controller
                 'rejection_reason' => 'required|string|max:500',
             ]);
 
-            // Get current workflow history
-            $workflowHistory = $documentRequest->workflow_history 
-                ? json_decode($documentRequest->workflow_history, true) 
-                : [];
+            // ✅ Capture old status before update
+            $oldStatus = $documentRequest->status;
 
-            // Add rejection to workflow
+            // ✅ FIX: no json_decode needed
+            $workflowHistory   = $documentRequest->workflow_history ?? [];
             $workflowHistory[] = [
-                'status' => 'rejected',
-                'admin_id' => auth()->id(),
+                'status'     => 'rejected',
+                'admin_id'   => auth()->id(),
                 'admin_name' => auth()->user()->name,
-                'timestamp' => now()->toIso8601String(),
-                'reason' => $validated['rejection_reason'],
+                'timestamp'  => now()->toIso8601String(),
+                'reason'     => $validated['rejection_reason'],
             ];
 
             $documentRequest->update([
-                'status' => 'rejected',
-                'admin_note' => $validated['rejection_reason'],
-                'workflow_history' => json_encode($workflowHistory),
+                'status'           => 'rejected',
+                'admin_note'       => $validated['rejection_reason'],
+                'workflow_history' => $workflowHistory, // ✅ no json_encode
             ]);
 
-            return redirect()
-                ->back()
-                ->with('success', 'Document rejected successfully');
+            // ✅ Notify user document is rejected
+            if ($documentRequest->user) {
+                $documentRequest->user->notify(
+                    new DocumentStatusUpdated($documentRequest, $oldStatus)
+                );
+            }
+
+            return redirect()->back()->with('success', 'Document rejected successfully');
 
         } catch (\Exception $e) {
             Log::error('Document Rejection Error: ' . $e->getMessage(), [
                 'document_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'trace'       => $e->getTraceAsString()
             ]);
-
-            return redirect()
-                ->back()
-                ->withErrors(['error' => 'Failed to reject document']);
+            return redirect()->back()->withErrors(['error' => 'Failed to reject document']);
         }
     }
 
     /**
      * Download attachment
+     * ✅ FIX: attachments is already cast as array — no json_decode needed
      */
     public function downloadAttachment(Request $request, $id)
     {
         try {
             $documentRequest = DocumentRequest::findOrFail($id);
-            
-            $validated = $request->validate([
-                'path' => 'required|string',
-            ]);
 
-            $filePath = $validated['path'];
+            $validated = $request->validate(['path' => 'required|string']);
+            $filePath  = $validated['path'];
 
-            // Security check - ensure file belongs to this document
-            $attachments = $documentRequest->attachments 
-                ? json_decode($documentRequest->attachments, true) 
-                : [];
+            // ✅ FIX: already an array from model cast
+            $attachments = $documentRequest->attachments ?? [];
 
             if (!in_array($filePath, $attachments)) {
                 return redirect()->back()->withErrors(['error' => 'File not found']);
@@ -320,33 +337,91 @@ class AdminDocumentController extends Controller
         } catch (\Exception $e) {
             Log::error('Download Attachment Error: ' . $e->getMessage(), [
                 'document_id' => $id,
-                'trace' => $e->getTraceAsString()
+                'trace'       => $e->getTraceAsString()
             ]);
-
             return redirect()->back()->withErrors(['error' => 'Failed to download file']);
         }
     }
 
-    /**
-     * Helper function to determine file type
-     */
+    public function print($id)
+{
+    try {
+        $documentRequest = DocumentRequest::with('user:id,name,email,phone_number,address')
+            ->findOrFail($id);
+
+        // Only completed documents can be printed
+        if ($documentRequest->status !== 'completed') {
+            abort(403, 'Document must be completed before printing.');
+        }
+
+        return Inertia::render('Admin/Documents/Print', [
+            'docRequest' => [
+                'id'                      => $documentRequest->id,
+                'tracking_code'           => $documentRequest->tracking_code,
+                'document_type'           => $documentRequest->document_type,
+                'department'              => $documentRequest->department,
+                'status'                  => $documentRequest->status,
+                'data'                    => $documentRequest->data ?? [],
+                'admin_signature'         => $documentRequest->admin_signature,
+                'admin_signature_date'    => $documentRequest->admin_signature_date?->toISOString(),
+                'blockchain_tx_hash'      => $documentRequest->blockchain_tx_hash,
+                'blockchain_network'      => $documentRequest->blockchain_network,
+                'blockchain_explorer_url' => $documentRequest->blockchain_explorer_url,
+                'blockchain_anchored_at'  => $documentRequest->blockchain_anchored_at?->toISOString(),
+                'blockchain_status'       => $documentRequest->blockchain_status,
+                'created_at'              => $documentRequest->created_at?->toISOString(),
+                'updated_at'              => $documentRequest->updated_at?->toISOString(),
+            ],
+            'user' => [
+                'id'           => $documentRequest->user->id,
+                'name'         => $documentRequest->user->name,
+                'email'        => $documentRequest->user->email,
+                'phone_number' => $documentRequest->user->phone_number,
+                'address'      => $documentRequest->user->address,
+            ],
+        ]);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        abort(404, 'Document not found.');
+    } catch (\Exception $e) {
+        Log::error('Document Print Error: ' . $e->getMessage(), ['id' => $id]);
+        abort(500, 'Failed to load document for printing.');
+    }
+}
+
     private function getFileType($path)
     {
         $extension = pathinfo($path, PATHINFO_EXTENSION);
-        
         $mimeTypes = [
-            'pdf' => 'application/pdf',
-            'doc' => 'application/msword',
+            'pdf'  => 'application/pdf',
+            'doc'  => 'application/msword',
             'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'xls' => 'application/vnd.ms-excel',
+            'xls'  => 'application/vnd.ms-excel',
             'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'jpg' => 'image/jpeg',
+            'jpg'  => 'image/jpeg',
             'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'gif' => 'image/gif',
-            'txt' => 'text/plain',
+            'png'  => 'image/png',
+            'gif'  => 'image/gif',
+            'txt'  => 'text/plain',
         ];
-
         return $mimeTypes[strtolower($extension)] ?? 'application/octet-stream';
+    }
+
+    private function getDepartmentIcon($department)
+    {
+        $icons = [
+            'Municipal Civil Registrar' => '📜',
+            'Municipal Health Office'   => '🩺',
+            'Business Permits (BPLO)'   => '💼',
+            'Engineering Office'        => '🏗️',
+            'Agriculture Office'        => '🌾',
+            'Social Welfare (MSWDO)'    => '🤝',
+            'Treasurer\'s Office'       => '💰',
+            'Assessor\'s Office'        => '🏡',
+            'MPDO'                      => '🗺️',
+            'MDRRMO'                    => '🚨',
+            'Barangay Certifications'   => '🏘️',
+        ];
+        return $icons[$department] ?? '📄';
     }
 }

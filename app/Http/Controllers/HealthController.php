@@ -45,4 +45,31 @@ class HealthController extends Controller
 
         return redirect()->back()->with('flash', ['success' => 'Appointment Booked Successfully!']);
     }
+     public function apply(Request $request)
+    {
+        $validated = $request->validate([
+            'application_type' => 'required|string',
+            'application_data' => 'required|array',
+            'attachments'      => 'nullable|array',
+            'attachments.*'    => 'nullable|file|max:5120',
+        ]);
+
+        $attachmentPaths = [];
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $attachmentPaths[] = $file->store("health-applications/{$validated['application_type']}", 'public');
+            }
+        }
+
+        \App\Models\HealthApplication::create([
+            'user_id'          => auth()->id(),
+            'application_type' => $validated['application_type'],
+            'application_data' => $validated['application_data'],
+            'attachments'      => $attachmentPaths ?: null,
+            'status'           => 'pending',
+        ]);
+
+        return redirect()->back()
+            ->with('success', '✅ Health application submitted! We will notify you once reviewed.');
+    }
 }
