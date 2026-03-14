@@ -20,11 +20,6 @@ RUN apt-get update && apt-get install -y \
         php8.2-intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Download Aiven CA certificate bundle (required for SSL connection)
-RUN curl -sSL https://raw.githubusercontent.com/aiven/aiven-docs/main/static/certs/ca.pem \
-    -o /etc/ssl/certs/aiven-ca.pem \
-    || cp /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/aiven-ca.pem
-
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -52,7 +47,7 @@ RUN chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8080
 
-# At startup: use live Render env vars for all caching, then migrate and serve
+# At startup: cache with live Render env vars, migrate, serve
 CMD php8.2 artisan config:cache \
     && php8.2 artisan route:cache \
     && php8.2 artisan view:cache \
