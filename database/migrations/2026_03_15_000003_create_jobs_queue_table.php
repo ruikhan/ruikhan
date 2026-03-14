@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up()
     {
-        DB::statement('SET SESSION sql_require_primary_key=0');
+        if (DB::getDriverName() === 'mysql') { DB::statement('SET SESSION sql_require_primary_key=0'); }
 
         // jobs table already created by 2026_03_02_044919_create_jobs_table.php
         // Only create if it doesn't exist
@@ -52,7 +52,7 @@ return new class extends Migration
             });
         }
 
-        DB::statement('SET SESSION sql_require_primary_key=1');
+        if (DB::getDriverName() === 'mysql') { DB::statement('SET SESSION sql_require_primary_key=1'); }
     }
 
     public function down()

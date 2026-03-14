@@ -11,7 +11,7 @@ return new class extends Migration
     {
         // Aiven MySQL enforces sql_require_primary_key=ON globally.
         // Disable it for this session so UUID primary keys work correctly.
-        DB::statement('SET SESSION sql_require_primary_key=0');
+        if (DB::getDriverName() === 'mysql') { DB::statement('SET SESSION sql_require_primary_key=0'); }
 
         Schema::create('notifications', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -23,7 +23,7 @@ return new class extends Migration
         });
 
         // Restore the setting for subsequent migrations in this session
-        DB::statement('SET SESSION sql_require_primary_key=1');
+        if (DB::getDriverName() === 'mysql') { DB::statement('SET SESSION sql_require_primary_key=1'); }
     }
 
     public function down()

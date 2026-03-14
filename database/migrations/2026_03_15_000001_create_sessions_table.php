@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up()
     {
-        DB::statement('SET SESSION sql_require_primary_key=0');
+        if (DB::getDriverName() === 'mysql') { DB::statement('SET SESSION sql_require_primary_key=0'); }
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
@@ -20,7 +20,7 @@ return new class extends Migration
             $table->integer('last_activity')->index();
         });
 
-        DB::statement('SET SESSION sql_require_primary_key=1');
+        if (DB::getDriverName() === 'mysql') { DB::statement('SET SESSION sql_require_primary_key=1'); }
     }
 
     public function down()
