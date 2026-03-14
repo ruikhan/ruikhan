@@ -1,66 +1,241 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
+  <img src="public/images/enotpili.png" alt="E-PILI Logo" width="120" />
+  
+  # E-PILI Portal
+  ### Digital Governance Platform for Pili, Camarines Sur
+  
+  ![Laravel](https://img.shields.io/badge/Laravel-9.x-FF2D20?style=flat-square&logo=laravel)
+  ![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D?style=flat-square&logo=vue.js)
+  ![Inertia.js](https://img.shields.io/badge/Inertia.js-0.6-9553E9?style=flat-square)
+  ![PHP](https://img.shields.io/badge/PHP-8.2-777BB4?style=flat-square&logo=php)
+  ![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
+</div>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+---
 
-## About Laravel
+## 📋 About
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+**E-PILI** (Electronic Portal for Integrated Local Information) is a full-stack digital governance platform serving the municipality of Pili, Camarines Sur, Philippines. It bridges citizens and local government through a unified web interface.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Core Modules
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Module | Description |
+|--------|-------------|
+| 🏛️ **Document Requests** | Request barangay clearances, certificates, and IDs online |
+| 🏪 **Marketplace** | Local business listings, products, and services |
+| 🌾 **Market Prices** | Real-time Saod/Centro commodity price board |
+| 💼 **Job Board** | Local employment postings |
+| 🏥 **Health Services** | Doctor appointments and health records |
+| 🤝 **Social Aid** | Assistance program listings and applications |
+| ♻️ **Green Guard** | Environmental issue reporting and monitoring |
+| 🚨 **Emergency** | Real-time emergency alerts and contacts |
+| 🗳️ **Polls** | Community voting and freedom wall |
+| 📊 **Admin Dashboard** | Workflow monitoring, analytics, and approvals |
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 🛠️ Tech Stack
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+**Backend**
+- Laravel 9.x (PHP 8.2)
+- MySQL / PostgreSQL
+- Laravel Sanctum (session auth)
+- Laravel WebSockets (real-time)
+- Laravel Queues
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+**Frontend**
+- Vue 3 (Composition API)
+- Inertia.js
+- Tailwind CSS
+- Vite
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+## 🚀 Local Development Setup
 
-### Premium Partners
+### Requirements
+- PHP 8.2+
+- Composer
+- Node.js 20+
+- MySQL (port 3306 or 3307)
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+### Installation
 
-## Contributing
+```bash
+# 1. Clone the repository
+git clone https://github.com/YOUR_USERNAME/epili-portal.git
+cd epili-portal
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# 2. Install dependencies
+composer install
+npm install
 
-## Code of Conduct
+# 3. Configure environment
+cp .env.example .env
+php artisan key:generate
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# 4. Set up database
+# Edit .env — set DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD
+php artisan migrate
+php artisan db:seed
 
-## Security Vulnerabilities
+# 5. Build frontend
+npm run dev       # development (with hot reload)
+# or
+npm run build     # production build
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# 6. Start the server
+php artisan serve --host=0.0.0.0 --port=8000
 
-## License
+# 7. (Optional) Start WebSocket server
+php artisan websockets:serve --port=6001
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 8. (Optional) Start queue worker
+php artisan queue:work
+```
+
+Visit: `http://localhost:8000`
+
+### Default Accounts (after seeding)
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@epili.gov.ph | password |
+| Resident | resident@epili.gov.ph | password |
+| Business | business@epili.gov.ph | password |
+
+---
+
+## ☁️ Deployment (GitHub + Render)
+
+### Step 1 — Push to GitHub
+
+```bash
+# Make sure .env is in .gitignore (never commit secrets)
+git add .
+git commit -m "Initial commit"
+git push origin main
+```
+
+### Step 2 — Free MySQL Database (PlanetScale)
+
+1. Create account at [planetscale.com](https://planetscale.com)
+2. New database → name: `epili` → region: **Asia Pacific (Singapore)**
+3. Connect → Framework: Laravel → copy credentials
+
+### Step 3 — Deploy on Render
+
+1. [render.com](https://render.com) → **New Web Service**
+2. Connect GitHub → select this repo
+3. Configure:
+   ```
+   Name:    epili-app
+   Region:  Singapore
+   Runtime: nixpacks          ← auto-detected from nixpacks.toml
+   Plan:    Free (or Starter)
+   ```
+4. Start command:
+   ```
+   php artisan migrate --force && php artisan storage:link --force && php -S 0.0.0.0:$PORT -t public
+   ```
+
+### Step 4 — Environment Variables on Render
+
+Set these in Render → Your Service → **Environment**:
+
+```env
+APP_NAME=ENOT-PILI
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=                          # click "Generate" in Render
+APP_URL=https://your-app.onrender.com
+
+DB_CONNECTION=mysql
+DB_HOST=                          # from PlanetScale
+DB_PORT=3306
+DB_DATABASE=epili
+DB_USERNAME=                      # from PlanetScale
+DB_PASSWORD=                      # from PlanetScale
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=480
+SESSION_SECURE_COOKIE=true
+SESSION_DOMAIN=
+SANCTUM_STATEFUL_DOMAINS=your-app.onrender.com
+
+CACHE_DRIVER=database
+QUEUE_CONNECTION=database
+FILESYSTEM_DISK=public
+LOG_CHANNEL=stderr
+LOG_LEVEL=error
+
+BLOCKCHAIN_API_SECRET=            # set as secret
+BLOCKCHAIN_CONTRACT_ADDRESS=0xc65bB3D1ddE97EAC0a6fd7Ba6FD7C1fb4eBC54d5
+BLOCKCHAIN_NETWORK=polygon-amoy
+```
+
+### Step 5 — One-time setup after first deploy
+
+In Render → Shell:
+
+```bash
+# Create tables needed for session/queue drivers
+php artisan session:table
+php artisan queue:table
+php artisan migrate --force
+
+# Seed initial data
+php artisan db:seed --force
+```
+
+### Auto-deploy
+
+Every `git push origin main` → Render rebuilds and redeploys automatically (~3 min).
+
+---
+
+## 📁 Project Structure
+
+```
+epili-portal/
+├── app/
+│   ├── Http/Controllers/     # Feature controllers
+│   ├── Models/               # Eloquent models
+│   ├── Notifications/        # Laravel notifications
+│   └── Providers/
+├── database/
+│   ├── migrations/           # Database schema
+│   └── seeders/
+├── resources/
+│   └── js/
+│       ├── Components/       # Reusable Vue components
+│       ├── Layouts/          # Page layouts
+│       └── Pages/            # Inertia page components
+├── routes/
+│   ├── web.php               # Web routes
+│   └── api.php               # API routes
+├── nixpacks.toml             # Render build config
+└── render.yaml               # Render infrastructure config
+```
+
+---
+
+## 🔒 Security
+
+- All routes protected via Laravel Sanctum session auth
+- CSRF protection on all state-changing requests
+- Role-based access: `admin`, `resident`, `business_owner`
+- Rate limiting on auth and API endpoints
+- Input validation on all form submissions
+
+---
+
+## 📄 License
+
+This project is open-sourced software licensed under the [MIT license](LICENSE).
+
+---
+
+<div align="center">
+  Built with ❤️ for the people of Pili, Camarines Sur 🇵🇭
+</div>
