@@ -351,9 +351,9 @@ onUnmounted(() => {
                 <div class="card" data-c="purple">
                     <div class="card-glow"></div>
                     <div class="card-icon">🎯</div>
-                    <h3 class="card-title">BPO Interview Coach</h3>
-                    <p class="card-desc">AI-powered interview preparation with deep analysis and real-time feedback for BPO positions.</p>
-                    <Link href="/bpo-coach" class="card-link">Start Practicing <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></Link>
+                    <h3 class="card-title">Social Engagement</h3>
+                    <p class="card-desc">Connect with your community, share ideas, and participate in local discussions.</p>
+                    <Link href="/social" class="card-link">Join the Conversation <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></Link>
                 </div>
 
             </div>
