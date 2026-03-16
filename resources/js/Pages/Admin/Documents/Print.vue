@@ -11,7 +11,7 @@ const props = defineProps({
 
 // ── QR Code ───────────────────────────────────────────────────────
 const qrDataUrl    = ref('');
-const verifyUrl    = `${window.location.origin}/verify?code=${props.docRequest?.tracking_code}`;
+const verifyUrl = `${window.location.origin}/documents/verify/${props.docRequest?.id}`;
 
 const generateQr = async () => {
     try {
