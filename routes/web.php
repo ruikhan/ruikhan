@@ -229,7 +229,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // ── Social Services ─────────────────────────────────────────────────────
     Route::get('/social-services', [SocialServiceController::class, 'index'])->name('social.index');
-    Route::post('/social-services/apply', [SocialServiceController::class, 'store'])->name('social.store');
+    Route::post('/social-services/apply', [SocialServiceController::class, 'store'])->name('social.apply');
 
     // ── Bills & Payments ────────────────────────────────────────────────────
     Route::get('/bills/pay', [BillPaymentController::class, 'create'])->name('bills.create');
