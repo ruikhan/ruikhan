@@ -11,7 +11,6 @@ const props = defineProps({
     recentActivity: { type: Array,  default: () => [] },
     pendingTasks:   { type: Array,  default: () => [] },
     departmentLoad: { type: Array,  default: () => [] },
-    // ── Workflow sections ───────────────────────────────
     socialAid: {
         type: Object,
         default: () => ({ stats: {}, byProgram: [], recent: [] }),
@@ -49,13 +48,13 @@ const safeRecentActivity = computed(() => (Array.isArray(props.recentActivity) ?
 const safeDepartmentLoad = computed(() => (Array.isArray(props.departmentLoad) ? props.departmentLoad.filter(d => d?.name) : []));
 
 // ── Workflow data ────────────────────────────────────────────────
-const socialStats   = computed(() => props.socialAid?.stats     ?? {});
-const socialRecent  = computed(() => props.socialAid?.recent    ?? []);
-const socialPrograms= computed(() => props.socialAid?.byProgram ?? []);
+const socialStats    = computed(() => props.socialAid?.stats     ?? {});
+const socialRecent   = computed(() => props.socialAid?.recent    ?? []);
+const socialPrograms = computed(() => props.socialAid?.byProgram ?? []);
 
-const healthStats   = computed(() => props.health?.stats   ?? {});
-const healthRecent  = computed(() => props.health?.recent  ?? []);
-const healthTypes   = computed(() => props.health?.byType  ?? []);
+const healthStats  = computed(() => props.health?.stats   ?? {});
+const healthRecent = computed(() => props.health?.recent  ?? []);
+const healthTypes  = computed(() => props.health?.byType  ?? []);
 
 const envStats      = computed(() => props.environment?.stats      ?? {});
 const envRecent     = computed(() => props.environment?.recent     ?? []);
@@ -69,7 +68,7 @@ const refreshDashboard = async () => {
         error.value = null;
         router.reload({
             only: ['stats','recentActivity','pendingTasks','departmentLoad','socialAid','health','environment'],
-            onError: (errors) => {
+            onError: () => {
                 error.value = 'Failed to refresh dashboard data';
                 showToast('Failed to refresh dashboard', 'error');
                 if (retryCount.value < maxRetries) {
@@ -124,10 +123,10 @@ const updateTime = () => {
 
 const systemStatus = computed(() => {
     const total = safePendingTasks.value.length;
-    if (total === 0)  return { text: 'Optimal',  color: 'text-emerald-400', bg: 'bg-emerald-500', glow: 'shadow-emerald-500/50' };
-    if (total < 5)   return { text: 'Nominal',  color: 'text-blue-400',    bg: 'bg-blue-500',    glow: 'shadow-blue-500/50' };
-    if (total < 10)  return { text: 'Active',   color: 'text-amber-400',   bg: 'bg-amber-500',   glow: 'shadow-amber-500/50' };
-    return { text: 'Critical', color: 'text-red-400', bg: 'bg-red-500', glow: 'shadow-red-500/50' };
+    if (total === 0) return { text: 'Optimal',  color: 'text-emerald-400', bg: 'bg-emerald-500', glow: 'shadow-emerald-500/50' };
+    if (total < 5)  return { text: 'Nominal',  color: 'text-blue-400',    bg: 'bg-blue-500',    glow: 'shadow-blue-500/50' };
+    if (total < 10) return { text: 'Active',   color: 'text-amber-400',   bg: 'bg-amber-500',   glow: 'shadow-amber-500/50' };
+    return               { text: 'Critical', color: 'text-red-400',     bg: 'bg-red-500',     glow: 'shadow-red-500/50' };
 });
 
 // ── Mouse parallax ───────────────────────────────────────────────
@@ -180,7 +179,6 @@ const getAvatarGradient = (name) => {
     return g[h % g.length];
 };
 
-// ── Workflow-specific helpers ─────────────────────────────────────
 const statusBadge = (status) => {
     const map = {
         pending:      'bg-amber-500/20 text-amber-300  border-amber-500/30',
@@ -206,31 +204,43 @@ const severityColor = (s) => ({
 }[s] ?? 'text-slate-400 bg-slate-500/10 border-slate-500/20');
 
 const programIcon = (p) => ({
-    'student_assistance':   '🎓',
-    'senior_citizen':       '👴',
-    'pwd_assistance':       '♿',
-    'solo_parent':          '👩‍👧',
-    'calamity_aid':         '🆘',
+    'student_assistance': '🎓',
+    'senior_citizen':     '👴',
+    'pwd_assistance':     '♿',
+    'solo_parent':        '👩‍👧',
+    'calamity_aid':       '🆘',
 }[p] ?? '🤝');
 
 const healthIcon = (t) => ({
-    'medical_assistance':   '💊',
-    'free_consultation':    '🩺',
-    'medicine_request':     '💉',
-    'laboratory_request':   '🧪',
-    'mental_health_support':'🧠',
+    'medical_assistance':    '💊',
+    'free_consultation':     '🩺',
+    'medicine_request':      '💉',
+    'laboratory_request':    '🧪',
+    'mental_health_support': '🧠',
 }[t] ?? '🏥');
 
 const envIcon = (t) => ({
-    'illegal_dumping':      '🗑️',
-    'air_pollution':        '🌫️',
-    'water_contamination':  '💧',
-    'flood_hazard':         '🌊',
-    'deforestation':        '🌳',
-    'noise_pollution':      '📢',
+    'illegal_dumping':     '🗑️',
+    'air_pollution':       '🌫️',
+    'water_contamination': '💧',
+    'flood_hazard':        '🌊',
+    'deforestation':       '🌳',
+    'noise_pollution':     '📢',
 }[t] ?? '🌿');
 
 const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) ?? '—';
+
+// ✅ FIX: Safe route helper — never throws a Ziggy error.
+// Without this, the clock's setInterval (every 1s) re-renders the template,
+// calls route('admin.social-aid.index'), and crashes 100+ times per minute.
+const safeRoute = (name, params) => {
+    try {
+        return route(name, params);
+    } catch {
+        // Route not yet in Ziggy list (e.g. stale cache on first load)
+        return '#';
+    }
+};
 </script>
 
 <template>
@@ -297,7 +307,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                 <div class="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-purple-600/5 to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <div class="relative p-4 sm:p-6 lg:p-8">
                     <div class="flex flex-col lg:flex-row justify-between gap-6">
-                        <!-- User info -->
                         <div class="flex items-center gap-4 sm:gap-6">
                             <div class="relative group/avatar">
                                 <div class="absolute inset-0 rounded-2xl animate-spin-slow">
@@ -533,11 +542,7 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                 </div>
             </div>
 
-            <!-- ══════════════════════════════════════════════════
-                 WORKFLOW MONITORING — Social Aid · Health · Environment
-            ══════════════════════════════════════════════════════ -->
-
-            <!-- Section title -->
+            <!-- ══ WORKFLOW MONITORING ════════════════════════════ -->
             <div class="flex items-center gap-4 pt-2">
                 <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
                 <h2 class="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">Workflow Monitoring</h2>
@@ -548,7 +553,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
 
                 <!-- ── SOCIAL AID ─────────────────────────────── -->
                 <div class="glass-card animate-fade-in-up" style="animation-delay:0.1s">
-                    <!-- Header -->
                     <div class="px-5 py-4 border-b border-white/8 bg-gradient-to-r from-violet-900/30 to-transparent flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-lg shadow-lg shadow-violet-500/30">🤝</div>
@@ -557,12 +561,12 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                                 <p class="text-violet-400/70 text-[11px]">Assistance programs</p>
                             </div>
                         </div>
-                        <Link :href="route('admin.social-aid.index')" class="text-[11px] font-bold text-violet-400 hover:text-violet-300 transition-colors">
+                        <!-- ✅ FIX 1 of 6 -->
+                        <Link :href="safeRoute('admin.social-aid.index')" class="text-[11px] font-bold text-violet-400 hover:text-violet-300 transition-colors">
                             View All →
                         </Link>
                     </div>
 
-                    <!-- Status pill row -->
                     <div class="px-5 py-4 grid grid-cols-3 gap-2 border-b border-white/5">
                         <div class="text-center p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
                             <div class="text-xl font-bold text-amber-300">{{ socialStats.pending ?? 0 }}</div>
@@ -578,7 +582,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                         </div>
                     </div>
 
-                    <!-- Program breakdown -->
                     <div class="px-5 py-3 space-y-2.5 border-b border-white/5">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">By Program</p>
                         <div v-for="prog in socialPrograms" :key="prog.label" class="flex items-center gap-3">
@@ -597,7 +600,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                         <div v-if="!socialPrograms.length" class="text-center py-3 text-slate-600 text-xs">No data yet</div>
                     </div>
 
-                    <!-- Recent -->
                     <div class="px-5 py-4 space-y-3 max-h-64 overflow-y-auto premium-scrollbar">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Recent Applications</p>
                         <div v-for="item in socialRecent" :key="item.id"
@@ -614,7 +616,8 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                                     <span class="text-[10px] text-slate-500">{{ item.time }}</span>
                                 </div>
                             </div>
-                            <Link :href="route('admin.social-aid.show', item.id)"
+                            <!-- ✅ FIX 2 of 6 -->
+                            <Link :href="safeRoute('admin.social-aid.show', item.id)"
                                 class="opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0 w-7 h-7 flex items-center justify-center bg-violet-600/40 hover:bg-violet-600/70 rounded-lg text-white text-xs font-bold">→</Link>
                         </div>
                         <div v-if="!socialRecent.length" class="text-center py-6 text-slate-600 text-xs">
@@ -625,7 +628,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
 
                 <!-- ── HEALTH ──────────────────────────────────── -->
                 <div class="glass-card animate-fade-in-up" style="animation-delay:0.2s">
-                    <!-- Header -->
                     <div class="px-5 py-4 border-b border-white/8 bg-gradient-to-r from-rose-900/30 to-transparent flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-600 to-pink-700 flex items-center justify-center text-lg shadow-lg shadow-rose-500/30">🏥</div>
@@ -634,12 +636,12 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                                 <p class="text-rose-400/70 text-[11px]">Medical assistance</p>
                             </div>
                         </div>
-                        <Link :href="route('admin.health.index')" class="text-[11px] font-bold text-rose-400 hover:text-rose-300 transition-colors">
+                        <!-- ✅ FIX 3 of 6 -->
+                        <Link :href="safeRoute('admin.health.index')" class="text-[11px] font-bold text-rose-400 hover:text-rose-300 transition-colors">
                             View All →
                         </Link>
                     </div>
 
-                    <!-- Status pills -->
                     <div class="px-5 py-4 grid grid-cols-3 gap-2 border-b border-white/5">
                         <div class="text-center p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
                             <div class="text-xl font-bold text-amber-300">{{ healthStats.pending ?? 0 }}</div>
@@ -655,7 +657,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                         </div>
                     </div>
 
-                    <!-- By type -->
                     <div class="px-5 py-3 space-y-2.5 border-b border-white/5">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">By Service Type</p>
                         <div v-for="ht in healthTypes" :key="ht.label" class="flex items-center gap-3">
@@ -674,7 +675,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                         <div v-if="!healthTypes.length" class="text-center py-3 text-slate-600 text-xs">No data yet</div>
                     </div>
 
-                    <!-- Recent -->
                     <div class="px-5 py-4 space-y-3 max-h-64 overflow-y-auto premium-scrollbar">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Recent Applications</p>
                         <div v-for="item in healthRecent" :key="item.id"
@@ -691,7 +691,8 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                                     <span class="text-[10px] text-slate-500">{{ item.time }}</span>
                                 </div>
                             </div>
-                            <Link :href="route('admin.health.show', item.id)"
+                            <!-- ✅ FIX 4 of 6 -->
+                            <Link :href="safeRoute('admin.health.show', item.id)"
                                 class="opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0 w-7 h-7 flex items-center justify-center bg-rose-600/40 hover:bg-rose-600/70 rounded-lg text-white text-xs font-bold">→</Link>
                         </div>
                         <div v-if="!healthRecent.length" class="text-center py-6 text-slate-600 text-xs">
@@ -702,7 +703,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
 
                 <!-- ── ENVIRONMENT ─────────────────────────────── -->
                 <div class="glass-card animate-fade-in-up" style="animation-delay:0.3s">
-                    <!-- Header -->
                     <div class="px-5 py-4 border-b border-white/8 bg-gradient-to-r from-emerald-900/30 to-transparent flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center text-lg shadow-lg shadow-emerald-500/30">🌿</div>
@@ -711,14 +711,13 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                                 <p class="text-emerald-400/70 text-[11px]">Incident reports</p>
                             </div>
                         </div>
-                        <Link :href="route('admin.environment.index')" class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
+                        <!-- ✅ FIX 5 of 6 -->
+                        <Link :href="safeRoute('admin.environment.index')" class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
                             View All →
                         </Link>
                     </div>
 
-                    <!-- Status pills — critical alert if any -->
                     <div class="px-5 py-4 space-y-3 border-b border-white/5">
-                        <!-- Critical alert banner -->
                         <div v-if="envStats.critical > 0"
                             class="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-bold">
                             <span class="relative flex h-2 w-2 flex-shrink-0">
@@ -743,7 +742,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                         </div>
                     </div>
 
-                    <!-- By severity -->
                     <div class="px-5 py-3 space-y-2 border-b border-white/5">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">By Severity</p>
                         <div v-for="sv in envSeverities" :key="sv.label" class="flex items-center justify-between">
@@ -763,7 +761,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                         <div v-if="!envSeverities.length" class="text-center py-3 text-slate-600 text-xs">No data yet</div>
                     </div>
 
-                    <!-- Recent -->
                     <div class="px-5 py-4 space-y-3 max-h-64 overflow-y-auto premium-scrollbar">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Recent Reports</p>
                         <div v-for="item in envRecent" :key="item.id"
@@ -781,7 +778,8 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                                     <span class="text-[10px] text-slate-500">{{ item.time }}</span>
                                 </div>
                             </div>
-                            <Link :href="route('admin.environment.show', item.id)"
+                            <!-- ✅ FIX 6 of 6 -->
+                            <Link :href="safeRoute('admin.environment.show', item.id)"
                                 class="opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0 w-7 h-7 flex items-center justify-center bg-emerald-600/40 hover:bg-emerald-600/70 rounded-lg text-white text-xs font-bold">→</Link>
                         </div>
                         <div v-if="!envRecent.length" class="text-center py-6 text-slate-600 text-xs">
@@ -791,8 +789,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
                 </div>
 
             </div>
-            <!-- END Workflow Monitoring -->
-
         </div>
     </AuthenticatedLayout>
 </template>
@@ -811,26 +807,13 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
     border-color: rgba(255,255,255,0.15);
     box-shadow: 0 30px 60px -12px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1) inset;
 }
-
 .stat-card { position: relative; cursor: pointer; }
-.stat-card-content {
-    position: relative; background: linear-gradient(to bottom right, var(--tw-gradient-stops));
-    border: 1px solid; border-radius: 1rem; padding: 0.875rem;
-    backdrop-filter: blur(20px);
-    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-}
+.stat-card-content { position: relative; background: linear-gradient(to bottom right, var(--tw-gradient-stops)); border: 1px solid; border-radius: 1rem; padding: 0.875rem; backdrop-filter: blur(20px); transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
 .stat-card:hover .stat-card-content { transform: translateY(-2px) scale(1.02); }
 .stat-header { display: flex; align-items: center; gap: 0.375rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
 .stat-value { font-size: clamp(1.25rem, 3vw, 1.5rem); font-weight: 700; background: linear-gradient(to right, var(--tw-gradient-stops)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-family: ui-monospace, monospace; line-height: 1.2; }
 .stat-label { font-size: 0.75rem; margin-top: 0.25rem; }
-
-.action-card {
-    position: relative; overflow: hidden; padding: 1rem;
-    background: linear-gradient(to bottom right, rgba(30,41,59,0.6), rgba(15,23,42,0.6));
-    border: 1px solid; border-radius: 1rem; text-align: center;
-    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
+.action-card { position: relative; overflow: hidden; padding: 1rem; background: linear-gradient(to bottom right, rgba(30,41,59,0.6), rgba(15,23,42,0.6)); border: 1px solid; border-radius: 1rem; text-align: center; transition: all 0.3s cubic-bezier(0.4,0,0.2,1); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
 .action-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom right, var(--tw-gradient-stops)); opacity: 0; transition: opacity 0.3s; }
 .action-card:hover { transform: translateY(-4px) scale(1.03); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
 .action-card:hover::before { opacity: 0.15; }
@@ -838,32 +821,24 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
 .action-card-icon { position: relative; font-size: 2rem; margin-bottom: 0.5rem; transition: transform 0.3s; }
 .action-card:hover .action-card-icon { transform: scale(1.15) rotate(5deg); }
 .action-card-text { position: relative; font-size: 0.75rem; color: white; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-
 @keyframes slideInRight { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes slideInLeft  { from { opacity: 0; transform: translateX(20px); }  to { opacity: 1; transform: translateX(0); } }
 @keyframes fadeInUp     { from { opacity: 0; transform: translateY(20px); }  to { opacity: 1; transform: translateY(0); } }
 .animate-fade-in-up { animation: fadeInUp 0.6s ease-out backwards; }
-
-@keyframes pulseSlow    { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
-.animate-pulse-slow     { animation: pulseSlow 4s ease-in-out infinite; }
-@keyframes bounceSlow   { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-.animate-bounce-slow    { animation: bounceSlow 3s ease-in-out infinite; }
-@keyframes shimmer      { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-.animate-shimmer        { animation: shimmer 2s infinite; }
-@keyframes spinSlow     { to { transform: rotate(360deg); } }
-.animate-spin-slow      { animation: spinSlow 20s linear infinite; }
-
+@keyframes pulseSlow  { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+.animate-pulse-slow   { animation: pulseSlow 4s ease-in-out infinite; }
+@keyframes bounceSlow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.animate-bounce-slow  { animation: bounceSlow 3s ease-in-out infinite; }
+@keyframes shimmer    { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.animate-shimmer      { animation: shimmer 2s infinite; }
+@keyframes spinSlow   { to { transform: rotate(360deg); } }
+.animate-spin-slow    { animation: spinSlow 20s linear infinite; }
 .premium-scrollbar::-webkit-scrollbar { width: 4px; }
 .premium-scrollbar::-webkit-scrollbar-track { background: rgba(15,23,42,0.5); border-radius: 10px; }
 .premium-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, rgba(99,102,241,0.4), rgba(139,92,246,0.4)); border-radius: 10px; }
 .premium-scrollbar::-webkit-scrollbar-thumb:hover { background: linear-gradient(to bottom, rgba(99,102,241,0.7), rgba(139,92,246,0.7)); }
-
 @media (max-width: 640px) { .glass-card { border-radius: 1.25rem; } }
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-}
-
-/* ── Toast ────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
 .toast { position: fixed; top: 6rem; right: 1.5rem; z-index: 100; display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; border-radius: 0.75rem; background: rgba(18,18,20,0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 24rem; }
 .toast-success { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.1); }
 .toast-error   { border-color: rgba(239,68,68,0.3);  background: rgba(239,68,68,0.1); }
@@ -879,8 +854,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
 .toast-leave-active { animation: toast-out 0.3s ease; }
 @keyframes toast-in  { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
 @keyframes toast-out { to   { opacity: 0; transform: translateX(100%); } }
-
-/* ── Error Banner ─────────────────────────────────────────────── */
 .error-banner { position: fixed; top: 5rem; left: 50%; transform: translateX(-50%); z-index: 100; width: calc(100% - 2rem); max-width: 48rem; }
 .error-banner-content { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; border-radius: 0.75rem; background: rgba(239,68,68,0.15); backdrop-filter: blur(20px); border: 1px solid rgba(239,68,68,0.3); box-shadow: 0 10px 30px rgba(239,68,68,0.2); }
 .error-icon { font-size: 1.25rem; flex-shrink: 0; }
@@ -893,8 +866,6 @@ const formatLabel = (str) => str?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toU
 .error-banner-leave-active { animation: slide-up   0.3s ease; }
 @keyframes slide-down { from { opacity: 0; transform: translateX(-50%) translateY(-100%); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 @keyframes slide-up   { to   { opacity: 0; transform: translateX(-50%) translateY(-100%); } }
-
-/* ── Loading Overlay ──────────────────────────────────────────── */
 .loading-overlay { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); }
 .loading-spinner { position: relative; width: 60px; height: 60px; }
 .spinner-ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid transparent; animation: spinner-rotate 1.5s cubic-bezier(0.5,0,0.5,1) infinite; }
