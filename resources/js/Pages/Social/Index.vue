@@ -29,7 +29,7 @@ const fieldValues = ref({});
 
 const submit = () => {
     form.application_data = { ...fieldValues.value };
-    form.post(route('social.apply'), {
+    form.post(route('social.store'), {
         preserveScroll: true,
         onSuccess: () => { closeForm(); activeTab.value = 'myapps'; fieldValues.value = {}; },
     });
